@@ -1,8 +1,10 @@
 import {Clima} from "@/app/dominio/clima/Clima";
+import { ClimaId } from "./clima/objetosValor/ClimaId";
 
-export interface ClimaRepositorio{
+export interface RepositorioClima{
+    crearClima(clima: Clima): Promise<void>;
     obtenerClimas(): Promise<Clima[]>;
-    obtenerClima(id: string): Promise<Clima>;
-    guardarClima(clima:Clima): Promise<void>; //guardara el clima y si existe lo actualizara
-    eliminarClima(id: string): Promise<void>;
+    obtenerClima(id: ClimaId): Promise<Clima>;
+    editarClima(clima:Clima): Promise<void>;
+    eliminarClima(id: ClimaId): Promise<void>;
 }
