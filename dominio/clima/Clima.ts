@@ -26,5 +26,17 @@ export class Clima {
       this.estado = estado;
       this.createdAt = createdAt;
    }
+
+   public mapToPrimitive(){ //Esto se utiliza para que a la hora de devolver el clima desde la base de datos, no se devuelva como objeto desde el repositorio
+      return {
+         id: this.id.value,
+         ciudad: this.ciudad.value,
+         temperatura: this.temperatura.value,
+         humedad: this.humedad.value,
+         velocidadViento: this.velocidadViento.value,
+         estado: this.estado.value,
+         createdAt: this.createdAt.value,
+      };
+   }
   
 }
