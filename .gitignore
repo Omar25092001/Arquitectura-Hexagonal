@@ -1,4 +1,5 @@
 /infraestructura/backend/node_modules
 /infraestructura/backend/package-lock.json
+/infraestructura/backend/package.json
 /infraestructura/frontend/node_modules
 /infraestructura/frontend/package-lock.json
