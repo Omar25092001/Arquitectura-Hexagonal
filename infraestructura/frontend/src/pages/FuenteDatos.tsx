@@ -9,11 +9,13 @@ import { CheckCircle, ArrowRight,ChevronDown } from 'lucide-react';
 import { GrSatellite } from "react-icons/gr";
 import { SiInfluxdb } from "react-icons/si";
 import { RiFileExcel2Fill } from "react-icons/ri";
+import {useNavigate} from 'react-router-dom';
 
 export default function FuenteDatos() {
     const [selectedDataSource, setSelectedDataSource] = useState('mqtt');
     const [selectedProtocol, setSelectedProtocol] = useState('mqtt');
     const [protocolDropdownOpen, setProtocolDropdownOpen] = useState(false);
+    const navigate = useNavigate();
 
     const protocolOptions = [
         { id: 'mqtt', name: 'MQTT' },
@@ -50,6 +52,10 @@ export default function FuenteDatos() {
             selected: selectedDataSource === 'file'
         }
     ];
+
+    const handleSiguientePaso = () => {
+        navigate('/variables'); 
+    }
 
     return (
         <div className="bg-background min-h-screen flex flex-col">
@@ -151,7 +157,7 @@ export default function FuenteDatos() {
                         {/* Botón de acción */}
                         <div className="flex justify-end">
                             <button
-                                onClick={() => console.log('Next Step')}
+                                onClick={() => handleSiguientePaso()}
                                 className="bg-orange-400 text-white px-4 py-2 rounded-lg flex items-center hover:bg-orange-500 transition-colors"
                             >
                                 Siguiente Paso
