@@ -1,6 +1,9 @@
 import { useState,useEffect } from 'react';
 import { FaEyeSlash, FaEye } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
+import { loginUsuario } from '@/services/usuario.service';
+
+
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -29,10 +32,30 @@ const Login = () => {
         };
     }, []);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        console.log('Login attempt with:', { email, password });
-        navigate('/fuente-datos'); 
+        try
+        {
+            const usuario = {
+                correo: email,
+                contrasena: password
+            };
+            const response = await loginUsuario(usuario);
+            if(response.message == 'Login exitoso') {
+                console.log('Login attempt with:', { email, password });
+                navigate('/fuente-datos');
+            }
+            else {
+                console.error('Login failed:', response);
+                console.log('Error al iniciar sesión. Por favor, verifica tus credenciales.');
+            }
+           
+        } catch (error) {
+            console.error('Error during login:', error);
+            console.log('Error al iniciar sesión. Por favor, verifica tus credenciales.');
+            return;
+        }
+         
     };
 
     return (
@@ -98,15 +121,6 @@ const Login = () => {
                         </button>
                     </div>
                 </form>
-
-
-                <p className="text-sm text-white mt-2">
-                    ¿No tienes una cuenta?{' '}
-                    <a href="#" className="font-medium text-orange-400 hover:text-orange-500">
-                        Regístrate
-                    </a>
-                </p>
-
             </div>
         </div>
     );

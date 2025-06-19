@@ -1,17 +1,12 @@
-import React from 'react';
 import { IoMdLogOut } from "react-icons/io";
 import { useNavigate } from 'react-router-dom';
-
-
-
 const Header = () => {
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
   const handleLogout = () => {
-    // Aquí puedes agregar la lógica para cerrar sesión, como limpiar el estado de autenticación
-    console.log('Deslogueado');
-    navigate('/'); // Redirigir a la página de inicio o login
-  }
+        navigate('/');
+    }
+
   return (
     <header className="flex justify-between items-center px-5 py-5">
       <div className="text-white font-bold text-2xl">Configuración del Digital Twin</div>   

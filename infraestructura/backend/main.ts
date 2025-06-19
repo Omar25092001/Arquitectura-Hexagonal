@@ -1,5 +1,6 @@
 import express, { NextFunction,Request,Response } from 'express';
 import {ExpressClimaRouter} from './routes/ExpressClimaRouter';
+import {ExpressUsuarioRouter} from './routes/ExpressUsuarioRouter';
 import cors from 'cors';
 
 const app = express();
@@ -11,6 +12,7 @@ app.use(express.json());
 
 
 app.use(ExpressClimaRouter);
+app.use('/api/usuarios', ExpressUsuarioRouter);
 
 
 app.use((err: unknown, req: Request, res: Response, next: NextFunction): void => {

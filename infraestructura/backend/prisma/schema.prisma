@@ -16,3 +16,12 @@ model Clima {
   estado       String
   createdAt    DateTime @default(now())
 }
+
+model Usuario {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  correo      String   @unique
+  contrasena  String
+  fechaCreacion DateTime @default(now())
+  fechaActualizacion DateTime @updatedAt
+}
