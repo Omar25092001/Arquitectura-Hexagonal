@@ -1,5 +1,5 @@
 export class UsuarioId {
-   value: number;
+   value: number ;
    constructor(value: number){
       this.value = value;
    }

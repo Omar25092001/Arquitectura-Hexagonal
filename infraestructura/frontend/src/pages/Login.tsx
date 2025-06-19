@@ -8,9 +8,12 @@ import { loginUsuario } from '@/services/usuario.service';
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-
+    const [mostrarContrasena, setMostrarContrasena] = useState(false);
     const navigate = useNavigate();
+
+    const toggleMotrarContrasena = () => {
+        setMostrarContrasena(!mostrarContrasena);
+    };
 
     useEffect(() => {
         // Crear un estilo para los inputs autocompletados
@@ -96,7 +99,7 @@ const Login = () => {
                                 <input
                                     id="password"
                                     name="password"
-                                    type="password"
+                                    type={mostrarContrasena ? 'text' : 'password'}
                                     autoComplete="current-password"
                                     required
                                     value={password}
@@ -105,9 +108,9 @@ const Login = () => {
                                 />
                                 <div
                                     className="absolute text-white inset-y-0 right-0 pr-3 flex items-center cursor-pointer"
-                                    onClick={() => setShowPassword(!showPassword)}
+                                    onClick={() => toggleMotrarContrasena()}
                                 >
-                                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                                    {mostrarContrasena? <FaEyeSlash /> : <FaEye />}
                                 </div>
                             </div>
                         </div>

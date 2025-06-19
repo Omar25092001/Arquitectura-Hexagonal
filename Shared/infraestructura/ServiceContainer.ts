@@ -7,10 +7,13 @@ import { CrearUsuario } from "../../aplicacion/CasosUsoUsuario/crearUsuario/Crea
 import { VerificarCredenciales } from "../../aplicacion/verificarCredenciales/VerificarCredenciales";
 import { RepositorioClimaPrisma } from "../../infraestructura/backend/adaptadores/RepositorioClimaPrismaPostgre"
 import { RepositorioUsuarioPrismaPostgre } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioPrismaPostgre"
+import { RepositorioUsuarioInflux } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioInflux"
 //El contenedor de servicios es el encargado de instanciar los casos de uso y los repositorios
 
 const usuarioRepositorio = new RepositorioUsuarioPrismaPostgre; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
 const climaRepositorio = new RepositorioClimaPrisma; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
+const usuarioRepositorioInflux = new RepositorioUsuarioInflux; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
+
 export const ServiceContainer = {
   clima:{
     obtenerClimas: new ObtenerClimas(climaRepositorio),
@@ -20,7 +23,7 @@ export const ServiceContainer = {
     eliminarClima: new EliminarClima(climaRepositorio)
   },
   usuario:{
-    crearUsuario: new CrearUsuario(usuarioRepositorio),
-    verificarCredenciales: new VerificarCredenciales(usuarioRepositorio)
+    crearUsuario: new CrearUsuario(usuarioRepositorioInflux),
+    verificarCredenciales: new VerificarCredenciales(usuarioRepositorioInflux)
   }
 }
