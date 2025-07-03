@@ -26,7 +26,7 @@ export class RepositorioUsuarioInflux implements RepositorioUsuario {
 
     constructor() {
         const token = process.env.INFLUXDB_TOKEN;
-        const url = 'http://localhost:8086';
+        const url = process.env.INFLUXDB_URL || 'http://localhost:8086';
         this.org = process.env.INFLUXDB_ORG || 'miOrg';
         this.bucket = process.env.INFLUXDB_BUCKET || 'digital_twin';
 
@@ -137,7 +137,7 @@ export class RepositorioUsuarioInflux implements RepositorioUsuario {
         `;
 
         try {
-            console.log("Ejecutando con InfluxDB:");
+
             const idRecords = await queryApi.collectRows<{ id: string }>(findIdQuery);
 
             if (idRecords.length === 0) {

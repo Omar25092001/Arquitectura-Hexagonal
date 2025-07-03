@@ -1,8 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import mqtt from 'mqtt';
 
+interface ConfigMQTTProps {
+    onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
+}
 
-const ConfigMQTT = () => {
+const ConfigMQTT = ({ onConnectionStateChange }: ConfigMQTTProps) => {
+
+    //Prueba de Conexión MQTT
+
     const [mqttConfig, setMqttConfig] = useState({
         ip: '',
         topic: '',
@@ -10,8 +17,64 @@ const ConfigMQTT = () => {
         password: ''
     });
 
+    const clientRef = useRef<any>(null)// Referencia para el cliente MQTT para evitar recrearlo en cada renderizado
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [connectionMessage, setConnectionMessage] = useState('');
+
+    const ProbarConexionMQTT = () => {
+        if (clientRef.current) {
+            clientRef.current.end(true);
+            clientRef.current = null;
+        }
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+        }
+
+        const url = `ws://${mqttConfig.ip}`;
+        const opcionesConexion: mqtt.IClientOptions = {
+            username: mqttConfig.username,
+            password: mqttConfig.password,
+        };
+        setConnectionState('testing');
+        onConnectionStateChange?.('testing');
+        setConnectionMessage('Probando conexión al broker MQTT...');
+        const client = mqtt.connect(url, opcionesConexion);
+        clientRef.current = client;
+
+        timeoutRef.current = setTimeout(() => {
+            setConnectionState('error');
+            onConnectionStateChange?.('error');
+            setConnectionMessage('No se pudo conectar al broker MQTT.');
+            client.end(true);
+        }, 10000);
+
+
+        //Conexión y manejo de eventos
+        client.on('connect', () => {
+            setConnectionState('success');
+            onConnectionStateChange?.('success');
+            setConnectionMessage(`Conexión exitosa al broker MQTT. Suscrito al tópico ${mqttConfig.topic}.`);
+            client.subscribe(mqttConfig.topic, (err) => {
+                if (err) {
+                    setConnectionState('error');
+                    setConnectionMessage(`Error al suscribirse al tópico ${mqttConfig.topic}: ${err.message}`);
+                }
+            });
+        });
+
+        //Manejo en caso de error
+        client.on('error', (err: Error) => {
+            setConnectionState('error');
+            onConnectionStateChange?.('error');
+            setConnectionMessage(`Error de conexión: ${err.message}`);
+            client.end();
+        });
+
+    };
+
+    
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -19,29 +82,6 @@ const ConfigMQTT = () => {
             ...prev,
             [name]: value
         }));
-    };
-
-    const testConnection = () => {
-        setConnectionState('testing');
-        setConnectionMessage('Probando conexión al broker MQTT...');
-        
-        // Simulación de tiempo de respuesta
-        setTimeout(() => {
-            // Validación básica de dirección IP y puerto
-            const ipPattern = /^(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?$|^localhost(?::\d+)?$/;
-            const isValidIp = ipPattern.test(mqttConfig.ip);
-            
-            if (isValidIp && mqttConfig.topic) {
-                setConnectionState('success');
-                setConnectionMessage(`Conexión exitosa al broker MQTT. Suscrito al tópico ${mqttConfig.topic}.`);
-            } else {
-                setConnectionState('error');
-                const errorMsg = !isValidIp 
-                    ? 'Error: La dirección IP del broker no es válida. Formato esperado: 192.168.1.100:1883' 
-                    : 'Error: Debe especificar un tópico para la suscripción MQTT.';
-                setConnectionMessage(errorMsg);
-            }
-        }, 1500);
     };
 
     return (
@@ -60,7 +100,7 @@ const ConfigMQTT = () => {
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
             </div>
-            
+
             <div>
                 <label htmlFor="topic" className="block text-sm font-medium text-white mb-1">
                     Tópico
@@ -75,7 +115,7 @@ const ConfigMQTT = () => {
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
             </div>
-            
+
             <div>
                 <label htmlFor="username" className="block text-sm font-medium text-white mb-1">
                     Usuario
@@ -90,7 +130,7 @@ const ConfigMQTT = () => {
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
             </div>
-            
+
             <div>
                 <label htmlFor="password" className="block text-sm font-medium text-white mb-1">
                     Contraseña
@@ -108,19 +148,19 @@ const ConfigMQTT = () => {
             {/* Botón y estado de conexión con círculo indicador */}
             <div className="mt-6 flex items-center flex-wrap gap-3">
                 <button
-                    onClick={testConnection}
+                    onClick={ProbarConexionMQTT}
                     disabled={connectionState === 'testing'}
                     className={`px-4 py-2 rounded-lg text-white font-medium flex items-center 
-                    ${connectionState === 'testing' 
-                        ? 'bg-gray-600 cursor-not-allowed' 
-                        : 'bg-orange-400 hover:bg-orange-500'}`}
+                    ${connectionState === 'testing'
+                            ? 'bg-gray-600 cursor-not-allowed'
+                            : 'bg-orange-400 hover:bg-orange-500'}`}
                 >
                     {connectionState === 'testing' && (
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     )}
                     Probar Conexión
                 </button>
-                
+
                 {/* Círculo indicador de estado */}
                 {connectionState === 'success' && (
                     <div className="flex items-center">
@@ -128,7 +168,7 @@ const ConfigMQTT = () => {
                         <span className="ml-2 text-sm font-medium text-green-400">Conexión exitosa</span>
                     </div>
                 )}
-                
+
                 {connectionState === 'error' && (
                     <div className="flex items-center">
                         <div className="h-4 w-4 rounded-full bg-red-500 shadow-lg"></div>
@@ -136,7 +176,7 @@ const ConfigMQTT = () => {
                     </div>
                 )}
             </div>
-            
+
             {/* Panel con detalles del estado */}
             {connectionState !== 'idle' && (
                 <div className={`mt-3 p-3 rounded-lg flex items-start
@@ -147,16 +187,15 @@ const ConfigMQTT = () => {
                     {connectionState === 'testing' && <Loader2 className="w-5 h-5 mr-2 animate-spin text-gray-300" />}
                     {connectionState === 'success' && <CheckCircle className="w-5 h-5 mr-2 text-green-400" />}
                     {connectionState === 'error' && <XCircle className="w-5 h-5 mr-2 text-red-400" />}
-                    <span className={`text-sm ${
-                        connectionState === 'success' ? 'text-green-400' : 
-                        connectionState === 'error' ? 'text-red-400' : 'text-gray-300'
-                    }`}>
+                    <span className={`text-sm ${connectionState === 'success' ? 'text-green-400' :
+                            connectionState === 'error' ? 'text-red-400' : 'text-gray-300'
+                        }`}>
                         {connectionMessage}
                     </span>
                 </div>
             )}
         </div>
-        
+
     );
 }
 

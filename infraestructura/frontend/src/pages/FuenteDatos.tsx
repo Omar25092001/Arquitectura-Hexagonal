@@ -5,17 +5,25 @@ import ConfigWebSocket from '@/components/ConfigWebSocket';
 import ConfigHTTP from '@/components/ConfigHTTP';
 import ConfigInflux from '@/components/ConfigInflux';
 import ConfigExcel from '@/components/ConfigExcel';
-import { CheckCircle, ArrowRight,ChevronDown } from 'lucide-react';
+import { CheckCircle, ArrowRight, ChevronDown } from 'lucide-react';
 import { GrSatellite } from "react-icons/gr";
 import { SiInfluxdb } from "react-icons/si";
 import { RiFileExcel2Fill } from "react-icons/ri";
-import {useNavigate} from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export default function FuenteDatos() {
     const [selectedDataSource, setSelectedDataSource] = useState('mqtt');
     const [selectedProtocol, setSelectedProtocol] = useState('mqtt');
     const [protocolDropdownOpen, setProtocolDropdownOpen] = useState(false);
     const navigate = useNavigate();
+
+    const [estadoConexion, setEstadoConexion] = useState({
+        mqtt: 'idle',
+        websocket: 'idle',
+        http: 'idle',
+        influx: 'idle',
+        file: 'idle'
+    });
 
     const protocolOptions = [
         { id: 'mqtt', name: 'MQTT' },
@@ -53,9 +61,49 @@ export default function FuenteDatos() {
         }
     ];
 
+    const handleDataSourceChange = (newDataSource: string) => {
+        // Resetear todos los estados de conexión cuando cambia la fuente
+        setEstadoConexion({
+            mqtt: 'idle',
+            websocket: 'idle',
+            http: 'idle',
+            influx: 'idle',
+            file: 'idle'
+        });
+
+        setSelectedDataSource(newDataSource);
+
+        // Si es protocolo directo, resetear también el protocolo seleccionado
+        if (newDataSource === 'mqtt') {
+            setSelectedProtocol('mqtt');
+        }
+    };
+
+    const handleProtocolChange = (newProtocol: string) => {
+        // Resetear solo los estados de los protocolos directos
+        setEstadoConexion(prev => ({
+            ...prev,
+            mqtt: 'idle',
+            websocket: 'idle',
+            http: 'idle'
+        }));
+
+        setSelectedProtocol(newProtocol);
+        setProtocolDropdownOpen(false);
+    };
+
+    const actualizarEstadoConexion = (protocol: string, state: 'idle' | 'testing' | 'success' | 'error') => {
+        setEstadoConexion(prev => ({
+            ...prev,
+            [protocol]: state
+        }));
+    };
+
     const handleSiguientePaso = () => {
-        navigate('/variables'); 
+        navigate('/variables');
     }
+
+    const hasSuccessfulConnection = Object.values(estadoConexion).includes('success');
 
     return (
         <div className="bg-background min-h-screen flex flex-col">
@@ -90,7 +138,7 @@ export default function FuenteDatos() {
                             {dataSourceOptions.map((option) => (
                                 <div
                                     key={option.id}
-                                    onClick={() => setSelectedDataSource(option.id)}
+                                    onClick={() => handleDataSourceChange(option.id)}
                                     className={`p-4 rounded-lg cursor-pointer transition-colors ${option.selected
                                         ? 'bg-background-transparent border-2 border-background text-white'
                                         : 'bg-secundary border-2 border-background text-gray-300 hover:bg-background-transparent hover:border-background'
@@ -132,10 +180,7 @@ export default function FuenteDatos() {
                                                     {protocolOptions.map((protocol) => (
                                                         <div
                                                             key={protocol.id}
-                                                            onClick={() => {
-                                                                setSelectedProtocol(protocol.id);
-                                                                setProtocolDropdownOpen(false);
-                                                            }}
+                                                            onClick={() => handleProtocolChange(protocol.id)} // <-- Usar la nueva función
                                                             className="px-3 py-2 hover:bg-secundary cursor-pointer text-gray-300"
                                                         >
                                                             {protocol.name}
@@ -145,12 +190,15 @@ export default function FuenteDatos() {
                                             )}
                                         </div>
                                     </div>
-                                    {selectedProtocol === 'mqtt' && <ConfigMQTT />}
-                                    {selectedProtocol === 'websocket'&& <ConfigWebSocket />}
-                                    {selectedProtocol === 'http' && <ConfigHTTP />}
+                                    {selectedProtocol === 'mqtt' &&
+                                        <ConfigMQTT onConnectionStateChange={(state) => actualizarEstadoConexion('mqtt', state)} />}
+                                    {selectedProtocol === 'websocket' &&
+                                        <ConfigWebSocket onConnectionStateChange={(state) => actualizarEstadoConexion('websocket', state)} />}
+                                    {selectedProtocol === 'http' && <ConfigHTTP onConnectionStateChange={(state) => actualizarEstadoConexion('http', state)} />}
                                 </div>
                             )}
-                            {selectedDataSource === 'influx' && <ConfigInflux />}
+                            {selectedDataSource === 'influx' &&
+                                <ConfigInflux onConnectionStateChange={(state) => actualizarEstadoConexion('influx', state)} />}
                             {selectedDataSource === 'file' && <ConfigExcel />}
                         </div>
 
@@ -158,7 +206,11 @@ export default function FuenteDatos() {
                         <div className="flex justify-end">
                             <button
                                 onClick={() => handleSiguientePaso()}
-                                className="bg-orange-400 text-white px-4 py-2 rounded-lg flex items-center hover:bg-orange-500 transition-colors"
+                                disabled={!hasSuccessfulConnection}
+                                className={`px-4 py-2 rounded-lg flex items-center transition-colors ${hasSuccessfulConnection
+                                        ? 'bg-orange-400 text-white hover:bg-orange-500'
+                                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                    }`}
                             >
                                 Siguiente Paso
                                 <ArrowRight className="ml-2" />
