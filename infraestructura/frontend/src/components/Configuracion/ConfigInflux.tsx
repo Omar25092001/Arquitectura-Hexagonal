@@ -4,9 +4,10 @@ import { InfluxDB } from '@influxdata/influxdb-client';
 
 interface ConfigInfluxProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
+    onConfigChange?: (config: any) => void;
 }
 
-const ConfigInflux = ({ onConnectionStateChange }: ConfigInfluxProps) => {
+const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxProps) => {
 
     // Configuración y prueba de conexión InfluxDB
     const [influxConfig, setInfluxConfig] = useState({

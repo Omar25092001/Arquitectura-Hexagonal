@@ -8,12 +8,15 @@ import { VerificarCredenciales } from "../../aplicacion/verificarCredenciales/Ve
 import { RepositorioClimaPrisma } from "../../infraestructura/backend/adaptadores/RepositorioClimaPrismaPostgre"
 import { RepositorioUsuarioPrismaPostgre } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioPrismaPostgre"
 import { RepositorioUsuarioInflux } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioInflux"
+import { HasheBcrypt } from "../../infraestructura/backend/servicios/HasheBcrypt"
+import {TokenJWT} from "../../infraestructura/backend/servicios/TokenJWT";
 //El contenedor de servicios es el encargado de instanciar los casos de uso y los repositorios
 
-const usuarioRepositorio = new RepositorioUsuarioPrismaPostgre; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
+const usuarioRepositorioPostgre = new RepositorioUsuarioPrismaPostgre; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
 const climaRepositorio = new RepositorioClimaPrisma; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
 const usuarioRepositorioInflux = new RepositorioUsuarioInflux; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
-
+const servicioHasheo = new HasheBcrypt();
+const Token = new TokenJWT();
 export const ServiceContainer = {
   clima:{
     obtenerClimas: new ObtenerClimas(climaRepositorio),
@@ -23,7 +26,7 @@ export const ServiceContainer = {
     eliminarClima: new EliminarClima(climaRepositorio)
   },
   usuario:{
-    crearUsuario: new CrearUsuario(usuarioRepositorioInflux),
-    verificarCredenciales: new VerificarCredenciales(usuarioRepositorioInflux)
+    crearUsuario: new CrearUsuario(usuarioRepositorioPostgre, servicioHasheo),
+    verificarCredenciales: new VerificarCredenciales(usuarioRepositorioPostgre, servicioHasheo,Token)
   }
 }

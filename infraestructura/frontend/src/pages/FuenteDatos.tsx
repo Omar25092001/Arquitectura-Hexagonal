@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import Header from '../components/Header';
-import ConfigMQTT from '@/components/ConfigMQTT';
-import ConfigWebSocket from '@/components/ConfigWebSocket';
-import ConfigHTTP from '@/components/ConfigHTTP';
-import ConfigInflux from '@/components/ConfigInflux';
-import ConfigExcel from '@/components/ConfigExcel';
+import ConfigMQTT from '@/components/Configuracion/ConfigMQTT';
+import ConfigWebSocket from '@/components/Configuracion/ConfigWebSocket';
+import ConfigHTTP from '@/components/Configuracion/ConfigHTTP';
+import ConfigInflux from '@/components/Configuracion/ConfigInflux';
+import ConfigExcel from '@/components/Configuracion/ConfigExcel';
 import { CheckCircle, ArrowRight, ChevronDown } from 'lucide-react';
 import { GrSatellite } from "react-icons/gr";
 import { SiInfluxdb } from "react-icons/si";
@@ -36,6 +36,15 @@ export default function FuenteDatos() {
         { id: 3, title: 'Algoritmo', active: false },
         { id: 4, title: 'Ejecución', active: false }
     ];
+
+    // Estado para almacenar las configuraciones de cada fuente de datos
+    const [configurations, setConfigurations] = useState({
+        mqtt: {},
+        websocket: {},
+        http: {},
+        influx: {},
+        file: {}
+    });
 
     const dataSourceOptions = [
         {
@@ -79,6 +88,15 @@ export default function FuenteDatos() {
         }
     };
 
+    // Función para actualizar la configuración de un protocolo específico
+    const actualizarConfiguracion = (protocol: string, config: any) => {
+        setConfigurations(prev => ({
+            ...prev,
+            [protocol]: config
+        }));
+    };
+
+
     const handleProtocolChange = (newProtocol: string) => {
         // Resetear solo los estados de los protocolos directos
         setEstadoConexion(prev => ({
@@ -100,10 +118,21 @@ export default function FuenteDatos() {
     };
 
     const handleSiguientePaso = () => {
+        // 👈 GUARDAR CONFIGURACIÓN EN LOCALSTORAGE ANTES DE NAVEGAR
+        const currentProtocol = selectedDataSource === 'mqtt' ? selectedProtocol : selectedDataSource;
+        const currentConfig = configurations[currentProtocol as keyof typeof configurations];
+
+        const dataSourceInfo = {
+            protocol: currentProtocol,
+            config: currentConfig
+        };
+
+        localStorage.setItem('dataSourceConfig', JSON.stringify(dataSourceInfo));
         navigate('/variables');
-    }
+    };
 
     const hasSuccessfulConnection = Object.values(estadoConexion).includes('success');
+
 
     return (
         <div className="bg-background min-h-screen flex flex-col">
@@ -191,14 +220,18 @@ export default function FuenteDatos() {
                                         </div>
                                     </div>
                                     {selectedProtocol === 'mqtt' &&
-                                        <ConfigMQTT onConnectionStateChange={(state) => actualizarEstadoConexion('mqtt', state)} />}
+                                        <ConfigMQTT onConnectionStateChange={(state) => actualizarEstadoConexion('mqtt', state)}
+                                            onConfigChange={(config) => actualizarConfiguracion('mqtt', config)} />}
                                     {selectedProtocol === 'websocket' &&
-                                        <ConfigWebSocket onConnectionStateChange={(state) => actualizarEstadoConexion('websocket', state)} />}
-                                    {selectedProtocol === 'http' && <ConfigHTTP onConnectionStateChange={(state) => actualizarEstadoConexion('http', state)} />}
+                                        <ConfigWebSocket onConnectionStateChange={(state) => actualizarEstadoConexion('websocket', state)}
+                                            onConfigChange={(config) => actualizarConfiguracion('websocket', config)} />}
+                                    {selectedProtocol === 'http' && <ConfigHTTP onConnectionStateChange={(state) => actualizarEstadoConexion('http', state)}
+                                        onConfigChange={(config) => actualizarConfiguracion('http', config)} />}
                                 </div>
                             )}
                             {selectedDataSource === 'influx' &&
-                                <ConfigInflux onConnectionStateChange={(state) => actualizarEstadoConexion('influx', state)} />}
+                                <ConfigInflux onConnectionStateChange={(state) => actualizarEstadoConexion('influx', state)}
+                                    onConfigChange={(config) => actualizarConfiguracion('influx', config)} />}
                             {selectedDataSource === 'file' && <ConfigExcel />}
                         </div>
 
@@ -208,8 +241,8 @@ export default function FuenteDatos() {
                                 onClick={() => handleSiguientePaso()}
                                 disabled={!hasSuccessfulConnection}
                                 className={`px-4 py-2 rounded-lg flex items-center transition-colors ${hasSuccessfulConnection
-                                        ? 'bg-orange-400 text-white hover:bg-orange-500'
-                                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                    ? 'bg-orange-400 text-white hover:bg-orange-500'
+                                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
                                     }`}
                             >
                                 Siguiente Paso

@@ -18,7 +18,7 @@ model Clima {
 }
 
 model Usuario {
-  id          Int      @id @default(autoincrement())
+  id               String   @id @default(uuid())
   nombre      String
   correo      String   @unique
   contrasena  String

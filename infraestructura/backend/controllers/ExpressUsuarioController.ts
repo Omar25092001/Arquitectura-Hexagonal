@@ -1,6 +1,4 @@
-// src/infraestructura/api/controllers/ExpressUsuarioController.ts
-
-import { Request, Response } from "express";
+import { v4 as uuidv4 } from 'uuid';
 import { ServiceContainer } from "../../../Shared/infraestructura/ServiceContainer";
 import { CredencialesInvalidas } from "../../../dominio/usuario/erroresDominio/CredencialesInvalidas";
 
@@ -10,7 +8,7 @@ type credencialesExpress = {
 };
 
 type usuarioExpress = {
-    id?: number;
+    id?: string;
     nombre: string;
     correo: string;
     contrasena: string;
@@ -24,12 +22,11 @@ export class ExpressUsuarioController {
             const usuario: usuarioExpress = req.body;
             
             // Generar un ID si no se proporciona
-            const id = usuario.id || Math.floor(Math.random() * 1000000);
             
             // Crear fechas para createdAt y updatedAt
             const createdAt = new Date();
             const updatedAt = new Date();
-            
+            const id = uuidv4();
             const nuevoUsuario = await ServiceContainer.usuario.crearUsuario.run(
                 id,
                 usuario.nombre,
@@ -59,7 +56,12 @@ export class ExpressUsuarioController {
             // Si la verificación fue exitosa, devolvemos los datos del usuario
             return res.status(200).json({
                 message: "Login exitoso",
-                usuario: usuario.mapToPrimitive()
+                usuario: {
+                    id: usuario.usuario.id,
+                    nombre: usuario.usuario.nombre,
+                    correo: usuario.usuario.correo,
+                    token: usuario.usuario.token
+                },
             });
         } catch (error) {
             if (error instanceof CredencialesInvalidas) {

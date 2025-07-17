@@ -1,12 +1,18 @@
 import { useState } from 'react';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, HelpCircle } from 'lucide-react';
+import FormatoHTTP from '../Foramatos/FormatoHTTP';
 
 interface ConfigHTTPProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
+    onConfigChange?: (config: any) => void;
 }
 
 
-const ConfigHTTP = ({ onConnectionStateChange }: ConfigHTTPProps) => {
+const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps) => {
+
+    const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
+
+    //Consfiguración y prueba de conexión HTTP
     const [config, setConfig] = useState({
         url: '',
         endpoint: '',
@@ -24,6 +30,7 @@ const ConfigHTTP = ({ onConnectionStateChange }: ConfigHTTPProps) => {
             ...prev,
             [name]: value
         }));
+        
     };
 
     const probarConexionHttp = async () => {
@@ -75,9 +82,19 @@ const ConfigHTTP = ({ onConnectionStateChange }: ConfigHTTPProps) => {
             </div>
 
             <div>
-                <label htmlFor="endpoint" className="block text-sm font-medium text-white mb-1">
-                    Endpoint
-                </label>
+                <div className="flex items-center mb-1">
+                    <label htmlFor="endpoint" className="block text-sm font-medium text-white">
+                        Endpoint
+                    </label>
+                    <button
+                        type="button"
+                        onClick={() => setMostrarModalFormato(true)}
+                        className="ml-2 text-gray-400 hover:text-orange-400 transition-colors"
+                        title="Ver formato de respuesta esperado"
+                    >
+                        <HelpCircle className="w-4 h-4" />
+                    </button>
+                </div>
                 <input
                     id="endpoint"
                     name="endpoint"
@@ -162,6 +179,10 @@ const ConfigHTTP = ({ onConnectionStateChange }: ConfigHTTPProps) => {
                     </span>
                 </div>
             )}
+            <FormatoHTTP
+                isOpen={mostrarModalFormato}
+                onClose={() => setMostrarModalFormato(false)}
+            />
         </div>
 
     );

@@ -9,14 +9,7 @@ import { CreatedAt } from '../../../dominio/usuario/objetosValor/CreatedAt';
 import { UpdatedAt } from '../../../dominio/usuario/objetosValor/UpdatedAt';
 
 // Actualiza el tipo para que coincida con la estructura real de Prisma
-type usuarioPrisma = {
-  id: number;
-  nombre: string;
-  correo: string;
-  contrasena: string;
-  fechaCreacion: Date;
-  fechaActualizacion: Date;
-};
+
 
 export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
   private prisma: PrismaClient;
@@ -105,8 +98,4 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
     });
   }
 
-  async verificarContrasena(usuario: Usuario, contrasena: Contrasena): Promise<boolean> {
-    // Comparación directa sin bcrypt por ahora
-    return usuario.contrasena.value === contrasena.value;
-  }
 }

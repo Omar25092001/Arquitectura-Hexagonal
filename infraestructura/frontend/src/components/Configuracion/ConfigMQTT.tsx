@@ -1,12 +1,16 @@
 import { useState, useRef } from 'react';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, HelpCircle } from 'lucide-react';
 import mqtt from 'mqtt';
+import FormatoMQTT from '../Foramatos/FormatoMQTT';
 
 interface ConfigMQTTProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
+    onConfigChange?: (config: any) => void;
 }
 
-const ConfigMQTT = ({ onConnectionStateChange }: ConfigMQTTProps) => {
+const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps) => {
+
+    const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
 
     //Prueba de Conexión MQTT
 
@@ -17,17 +21,13 @@ const ConfigMQTT = ({ onConnectionStateChange }: ConfigMQTTProps) => {
         password: ''
     });
 
-    const clientRef = useRef<any>(null)// Referencia para el cliente MQTT para evitar recrearlo en cada renderizado
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [connectionMessage, setConnectionMessage] = useState('');
 
     const ProbarConexionMQTT = () => {
-        if (clientRef.current) {
-            clientRef.current.end(true);
-            clientRef.current = null;
-        }
+
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
         }
@@ -41,7 +41,7 @@ const ConfigMQTT = ({ onConnectionStateChange }: ConfigMQTTProps) => {
         onConnectionStateChange?.('testing');
         setConnectionMessage('Probando conexión al broker MQTT...');
         const client = mqtt.connect(url, opcionesConexion);
-        clientRef.current = client;
+
 
         timeoutRef.current = setTimeout(() => {
             setConnectionState('error');
@@ -56,6 +56,7 @@ const ConfigMQTT = ({ onConnectionStateChange }: ConfigMQTTProps) => {
             setConnectionState('success');
             onConnectionStateChange?.('success');
             setConnectionMessage(`Conexión exitosa al broker MQTT. Suscrito al tópico ${mqttConfig.topic}.`);
+            
             client.subscribe(mqttConfig.topic, (err) => {
                 if (err) {
                     setConnectionState('error');
@@ -78,10 +79,12 @@ const ConfigMQTT = ({ onConnectionStateChange }: ConfigMQTTProps) => {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setMqttConfig(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        const newConfig = { ...mqttConfig, [name]: value };
+        setMqttConfig(newConfig);
+        
+        // 👈 ENVIAR CONFIGURACIÓN AL PADRE
+        console.log('Enviando config MQTT:', newConfig); // 👈 DEBUGGING
+        onConfigChange?.(newConfig);
     };
 
     return (
@@ -102,9 +105,19 @@ const ConfigMQTT = ({ onConnectionStateChange }: ConfigMQTTProps) => {
             </div>
 
             <div>
-                <label htmlFor="topic" className="block text-sm font-medium text-white mb-1">
-                    Tópico
-                </label>
+               <div className="flex items-center mb-1">
+                    <label htmlFor="topic" className="block text-sm font-medium text-white">
+                        Tópico
+                    </label>
+                    <button
+                        type="button"
+                        onClick={() => setMostrarModalFormato(true)}
+                        className="ml-2 text-gray-400 hover:text-orange-400 transition-colors"
+                        title="Ver formato de datos esperado"
+                    >
+                        <HelpCircle className="w-4 h-4" />
+                    </button>
+                </div>
                 <input
                     id="topic"
                     name="topic"
@@ -194,6 +207,10 @@ const ConfigMQTT = ({ onConnectionStateChange }: ConfigMQTTProps) => {
                     </span>
                 </div>
             )}
+            <FormatoMQTT
+                isOpen={mostrarModalFormato} 
+                onClose={() => setMostrarModalFormato(false)} 
+            />
         </div>
 
     );

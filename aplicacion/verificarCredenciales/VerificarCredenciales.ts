@@ -1,35 +1,57 @@
-// src/aplicacion/verificarCredenciales/VerificarCredenciales.ts
-
 import { RepositorioUsuario } from "../../dominio/RepositorioUsuario";
 import { Usuario } from "../../dominio/usuario/Usuario";
 import { Correo } from "../../dominio/usuario/objetosValor/Correo";
 import { Contrasena } from "../../dominio/usuario/objetosValor/Constrasena";
 import { CredencialesInvalidas } from "../../dominio/usuario/erroresDominio/CredencialesInvalidas";
+import {Hasheo} from "../../dominio/usuario/servicios/Hasheo";
+import { Token } from "../../dominio/usuario/servicios/Token";
+
+export interface RespuestaVerificarCredenciales {
+    usuario: {
+        id: string;
+        nombre: string;
+        correo: string;
+        token: string;
+    };
+    
+}
 
 export class VerificarCredenciales {
-    constructor(private repositorioUsuario: RepositorioUsuario) {}
+    constructor(
+        private repositorioUsuario: RepositorioUsuario,
+        private servicioHasheo: Hasheo,
+        private servicioToken: Token // Inyectamos el servicio de token para generar el JWT 
+    ) {}
 
-    async run(correoStr: string, contrasenaStr: string): Promise<Usuario> {
+    async run(correoStr: string, contrasenaStr: string): Promise<RespuestaVerificarCredenciales> {
         try {
             // Crear objetos de valor a partir de los strings
             const correo = new Correo(correoStr);
             const contrasena = new Contrasena(contrasenaStr);
             
-            // Buscar usuario por correo, usando el objeto Correo
+            // Verificar credenciales en una sola llamada
             const usuario = await this.repositorioUsuario.obtenerUsuarioPorCorreo(correo);
 
             if (!usuario) {
                 throw new CredencialesInvalidas("Credenciales inválidas");
             }
 
-            // Verificar contraseña, usando el objeto Contrasena
-            const contrasenaValida = await this.repositorioUsuario.verificarContrasena(usuario, contrasena);
-
+            const contrasenaValida = await this.servicioHasheo.verificar(contrasenaStr, usuario.contrasena.value);
             if (!contrasenaValida) {
                 throw new CredencialesInvalidas("Credenciales inválidas");
             }
 
-            return usuario;
+            const tokenGenerado = await this.servicioToken.generar(usuario);
+
+            return {
+                usuario: {
+                    id: usuario.id.value,
+                    nombre: usuario.nombre.value,
+                    correo: usuario.correo.value,
+                    token: tokenGenerado
+                },
+                
+            };
         } catch (error) {
             // Capturar errores de validación de los objetos de valor
             if (error instanceof CredencialesInvalidas) {

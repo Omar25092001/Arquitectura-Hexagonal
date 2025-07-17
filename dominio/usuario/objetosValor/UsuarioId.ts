@@ -1,6 +1,10 @@
 export class UsuarioId {
-   value: number ;
-   constructor(value: number){
+   value: string; 
+   constructor(value: string) { 
       this.value = value;
+   }
+
+   toString(): string {
+      return this.value;
    }
 }

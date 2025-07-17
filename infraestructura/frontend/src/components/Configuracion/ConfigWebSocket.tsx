@@ -1,17 +1,19 @@
 import { useState,useRef } from 'react';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, HelpCircle } from 'lucide-react';
+import FormatoWebSocket from '../Foramatos/FormatoWebSocket';
 
 interface ConfigWebSocketProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
+    onConfigChange?: (config: any) => void;
 }
 
-const ConfigWebSocket = ({ onConnectionStateChange }: ConfigWebSocketProps) => {
+const ConfigWebSocket = ({ onConnectionStateChange, onConfigChange }: ConfigWebSocketProps) => {
+
+    const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
 
     //Configuración y prueba de conexión WebSocket
     const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [connectionMessage, setConnectionMessage] = useState('');
-
-     const wsRef = useRef<WebSocket | null>(null);// Referencia para el WebSocket para evitar recrearlo en cada renderizado
 
     const [config, setConfig] = useState({
         url: '',
@@ -37,7 +39,6 @@ const ConfigWebSocket = ({ onConnectionStateChange }: ConfigWebSocketProps) => {
         // Intentar conexión real
         try {
             const ws = new WebSocket(config.url);
-            wsRef.current = ws;//se guarda la referencia del WebSocket
             
             // Si usas token, puedes enviarlo como header (solo en backend) o como mensaje tras conectar
             ws.onopen = () => {
@@ -89,9 +90,19 @@ const ConfigWebSocket = ({ onConnectionStateChange }: ConfigWebSocketProps) => {
     return (
         <div className="grid grid-cols-1 gap-4">
             <div>
-                <label htmlFor="url" className="block text-sm font-medium text-white mb-1">
-                    URL del WebSocket
-                </label>
+                <div className="flex items-center mb-1">
+                    <label htmlFor="url" className="block text-sm font-medium text-white">
+                        URL del WebSocket
+                    </label>
+                    <button
+                        type="button"
+                        onClick={() => setMostrarModalFormato(true)}
+                        className="ml-2 text-gray-400 hover:text-orange-400 transition-colors"
+                        title="Ver formato de datos esperado"
+                    >
+                        <HelpCircle className="w-4 h-4" />
+                    </button>
+                </div>
                 <input
                     id="url"
                     name="url"
@@ -185,6 +196,10 @@ const ConfigWebSocket = ({ onConnectionStateChange }: ConfigWebSocketProps) => {
                     </span>
                 </div>
             )}
+            <FormatoWebSocket 
+                isOpen={mostrarModalFormato} 
+                onClose={() => setMostrarModalFormato(false)} 
+            />
         </div>
 
 
