@@ -14,7 +14,7 @@ export default function Variables() {
     const [error, setError] = useState<string | null>(null);
     const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
 
-    // 👈 PASOS DE NAVEGACIÓN
+    // PASOS DE NAVEGACIÓN
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
         { id: 2, title: 'Variables', active: true },
@@ -26,78 +26,139 @@ export default function Variables() {
     useEffect(() => {
         const savedConfig = localStorage.getItem('dataSourceConfig');
         if (!savedConfig) {
-            navigate('/fuentes-datos');
+            navigate('/fuente-datos');
             return;
         }
 
         const config = JSON.parse(savedConfig);
-        if (config.protocol !== 'mqtt') {
-            navigate('/fuentes-datos');
+        if (!['mqtt', 'http'].includes(config.protocol)) {
+            console.log('protocolo no soportado:', config.protocol)
+            navigate('/fuente-datos');
             return;
         }
 
         setDataSourceConfig(config);
     }, [navigate]);
 
-    // 👈 FUNCIÓN PARA PARSEAR EL MENSAJE MQTT
-    const parsearMensajeMQTT = (mensaje: string) => {
-        console.log('🔄 Parseando mensaje:', mensaje);
-
+    //  FUNCIÓN PARA PARSEAR EL MENSAJE MQTT
+    const parsearMensaje = (mensaje: string, formato?: string) => {
         const variables: any[] = [];
 
-        // Dividir por | y filtrar elementos vacíos
-        const pares = mensaje.split('|').filter(par => par.trim() !== '');
-        console.log('📋 Pares encontrados:', pares);
+        try {
+            //  INTENTAR PARSEAR COMO JSON PRIMERO
+            if (formato === 'json' || mensaje.trim().startsWith('{') || mensaje.trim().startsWith('[')) {
+                const jsonData = JSON.parse(mensaje);
 
-        pares.forEach((par, index) => {
-            const [nombre, valor] = par.split('=');
+                // Convertir objeto JSON a variables
+                const flattenObject = (obj: any, prefix = '') => {
+                    Object.keys(obj).forEach((key) => {
+                        const value = obj[key];
+                        const fullKey = prefix ? `${prefix}.${key}` : key;
 
-            if (nombre && valor !== undefined) {
-                const nombreLimpio = nombre.trim();
-                const valorLimpio = valor.trim();
+                        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                            // Objeto anidado - aplanar recursivamente
+                            flattenObject(value, fullKey);
+                        } else {
+                            // Valor primitivo - crear variable
+                            let dataType: string;
+                            let valorParseado: any = value;
 
-                // Detectar tipo de dato
-                let valorParseado: any;
-                let dataType: string;
+                            if (typeof value === 'number') {
+                                dataType = Number.isInteger(value) ? 'Numérico' : 'Numérico';
+                            } else if (typeof value === 'boolean') {
+                                dataType = 'Booleano';
+                            } else if (Array.isArray(value)) {
+                                dataType = 'Array';
+                                valorParseado = JSON.stringify(value);
+                            } else {
+                                dataType = 'Texto';
+                            }
 
-                // Intentar convertir a número
-                const numeroParseado = parseFloat(valorLimpio);
-                if (!isNaN(numeroParseado) && isFinite(numeroParseado)) {
-                    valorParseado = numeroParseado;
-                    dataType = 'Numérico';
-                } else if (valorLimpio.toLowerCase() === 'true' || valorLimpio.toLowerCase() === 'false') {
-                    valorParseado = valorLimpio.toLowerCase() === 'true';
-                    dataType = 'Booleano';
+                            // REMOVER EL PREFIJO "data." DEL NOMBRE
+                            let displayName = fullKey;
+                            if (displayName.startsWith('data.')) {
+                                displayName = displayName.replace('data.', '');
+                            }
+
+                            variables.push({
+                                id: variables.length + 1,
+                                name: displayName, // USAR EL NOMBRE SIN PREFIJO
+                                dataType: dataType,
+                                current: valorParseado,
+                                originalValue: String(value),
+                                fullPath: fullKey // GUARDAR LA RUTA COMPLETA POR SI LA NECESITAS
+                            });
+                        }
+                    });
+                };
+
+                if (Array.isArray(jsonData)) {
+                    // Si es un array, usar el primer elemento
+                    if (jsonData.length > 0) {
+                        flattenObject(jsonData[0]);
+                    }
                 } else {
-                    valorParseado = valorLimpio;
-                    dataType = 'Texto';
+                    flattenObject(jsonData);
                 }
-
-                variables.push({
-                    id: index + 1,
-                    name: nombreLimpio,
-                    dataType: dataType,
-                    current: valorParseado,
-                    originalValue: valorLimpio
-                });
-
-                console.log(`✅ Variable ${index + 1}:`, {
-                    nombre: nombreLimpio,
-                    valor: valorParseado,
-                    tipo: dataType,
-                    original: valorLimpio
-                });
-            } else {
-                console.log(`⚠️ Par inválido ignorado: "${par}"`);
             }
-        });
+            // PARSEAR COMO FORMATO MQTT (variable=valor|variable=valor)
+            else {
+                const pares = mensaje.split('|').filter(par => par.trim() !== '');
 
-        console.log(`🎯 Total variables detectadas: ${variables.length}`);
+                pares.forEach((par, index) => {
+                    const [nombre, valor] = par.split('=');
+
+                    if (nombre && valor !== undefined) {
+                        const nombreLimpio = nombre.trim();
+                        const valorLimpio = valor.trim();
+
+                        // Detectar tipo de dato
+                        let valorParseado: any;
+                        let dataType: string;
+
+                        const numeroParseado = parseFloat(valorLimpio);
+                        if (!isNaN(numeroParseado) && isFinite(numeroParseado)) {
+                            valorParseado = numeroParseado;
+                            dataType = 'Numérico';
+                        } else if (valorLimpio.toLowerCase() === 'true' || valorLimpio.toLowerCase() === 'false') {
+                            valorParseado = valorLimpio.toLowerCase() === 'true';
+                            dataType = 'Booleano';
+                        } else {
+                            valorParseado = valorLimpio;
+                            dataType = 'Texto';
+                        }
+
+                        variables.push({
+                            id: index + 1,
+                            name: nombreLimpio,
+                            dataType: dataType,
+                            current: valorParseado,
+                            originalValue: valorLimpio,
+                            fullPath: nombreLimpio // Para MQTT es igual
+                        });
+
+                        console.log(`✅ Variable ${index + 1}:`, {
+                            nombre: nombreLimpio,
+                            valor: valorParseado,
+                            tipo: dataType,
+                            original: valorLimpio
+                        });
+                    } else {
+                        console.log(`Par inválido ignorado: "${par}"`);
+                    }
+                });
+            }
+        } catch (jsonError) {
+            console.log('No es JSON válido, intentando formato MQTT...');
+            // Ya se intentó el formato MQTT arriba
+        }
+
+        console.log(`Total variables detectadas: ${variables.length}`);
         return variables;
     };
 
     // Detectar variables MQTT
-    const detectarVariables = async () => {
+    const detectarVariablesMQTT = async () => {
         if (!dataSourceConfig?.config) return;
 
         setIsLoading(true);
@@ -107,8 +168,6 @@ export default function Variables() {
 
         try {
             const config = dataSourceConfig.config;
-            console.log('🔍 Conectando a MQTT:', config.ip);
-            console.log('📡 Tópico:', config.topic);
 
             const variables = await new Promise<any[]>((resolve, reject) => {
                 const timeout = setTimeout(() => {
@@ -121,7 +180,6 @@ export default function Variables() {
                 });
 
                 client.on('connect', () => {
-                    console.log('✅ Conectado al broker MQTT');
                     client.subscribe(config.topic, (err) => {
                         if (err) {
                             clearTimeout(timeout);
@@ -138,12 +196,11 @@ export default function Variables() {
                     const mensajeRecibido = message.toString();
                     if (topic !== config.topic) {
                         console.log(`⚠️ Mensaje de tópico diferente ignorado: ${topic} (esperado: ${config.topic})`);
-                        return; 
+                        return;
                     }
-                    console.log('📥 MENSAJE RECIBIDO:', mensajeRecibido);
 
                     try {
-                        const variablesDetectadas = parsearMensajeMQTT(mensajeRecibido);
+                        const variablesDetectadas = parsearMensaje(mensajeRecibido);
 
                         if (variablesDetectadas.length === 0) {
                             client.end();
@@ -176,7 +233,57 @@ export default function Variables() {
         }
     };
 
-    // 👈 MANEJAR SELECCIÓN DE VARIABLES
+    const detectarVariablesHTTP = async () => {
+        setIsLoading(true);
+        setError(null);
+        const config = dataSourceConfig.config;
+
+        try {
+            const requestOptions: RequestInit = {
+                method: config.method || 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...config.headers
+                }
+            };
+
+            // Agregar body si es POST/PUT
+            if (['POST', 'PUT', 'PATCH'].includes(config.method?.toUpperCase()) && config.body) {
+                requestOptions.body = config.body;
+            }
+
+            const response = await fetch(config.url, requestOptions);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            const responseText = await response.text();
+
+            // Determinar formato basado en Content-Type
+            const formato = contentType.includes('application/json') ? 'json' : 'text';
+
+            const variablesDetectadas = parsearMensaje(responseText, formato);
+            console.log(`Total variables detectadas:`, variablesDetectadas);
+
+            if (variablesDetectadas.length === 0) {
+                throw new Error('No se detectaron variables válidas en la respuesta HTTP.\n\nFormatos soportados:\n• JSON: {"variable": valor}\n• Texto: variable=valor|variable=valor|...');
+            }
+            setVariables(variablesDetectadas);
+            setLastFetchTime(new Date());
+            setIsLoading(true);
+            setError(null);
+
+
+        } catch (error: any) {
+            setError(error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    //MANEJAR SELECCIÓN DE VARIABLES
     const toggleVariableSelection = (id: number) => {
         setSelectedVariables(prev => {
             if (prev.includes(id)) {
@@ -239,9 +346,18 @@ export default function Variables() {
                                     </p>
                                 </div>
 
-                                {/* 👈 BOTÓN PARA REFRESCAR VARIABLES */}
+                                {/*  BOTÓN PARA REFRESCAR VARIABLES */}
                                 <button
-                                    onClick={detectarVariables}
+                                    onClick={() => {
+                                        if (dataSourceConfig.protocol === 'http') {
+                                            console.log('entra en http')
+                                            detectarVariablesHTTP();
+
+                                        } if (dataSourceConfig.protocol === 'mqtt') {
+
+                                            detectarVariablesMQTT();
+                                        }
+                                    }}
                                     disabled={isLoading}
                                     className="flex items-center px-3 py-2 bg-orange-400 hover:bg-orange-500 disabled:bg-gray-600 text-white rounded-lg text-sm transition-colors"
                                 >
@@ -251,7 +367,7 @@ export default function Variables() {
                             </div>
                         </div>
 
-                        {/* 👈 MOSTRAR ESTADO DE CARGA O ERROR */}
+                        {/* MOSTRAR ESTADO DE CARGA O ERROR */}
                         {isLoading && (
                             <div className="flex items-center justify-center py-8">
                                 <RefreshCw className="w-6 h-6 animate-spin text-orange-400 mr-3" />
@@ -267,7 +383,15 @@ export default function Variables() {
                                 </div>
                                 <p className="text-red-300 text-sm mt-1">{error}</p>
                                 <button
-                                    onClick={detectarVariables}
+                                    onClick={() => {
+                                        if (dataSourceConfig.protocol === 'http') {
+                                            detectarVariablesHTTP();
+
+                                        } if (dataSourceConfig.protocol === 'mqtt') {
+
+                                            detectarVariablesMQTT();
+                                        }
+                                    }}
                                     className="text-red-400 hover:text-red-300 text-sm underline mt-2"
                                 >
                                     Intentar nuevamente
@@ -275,14 +399,22 @@ export default function Variables() {
                             </div>
                         )}
 
-                        {/* 👈 MOSTRAR VARIABLES SOLO SI NO HAY ERROR Y NO ESTÁ CARGANDO */}
+                        {/* MOSTRAR VARIABLES SOLO SI NO HAY ERROR Y NO ESTÁ CARGANDO */}
                         {!isLoading && !error && (
                             <>
                                 {variables.length === 0 ? (
                                     <div className="text-center py-8">
                                         <p className="text-gray-400">No se detectaron variables en la fuente de datos</p>
                                         <button
-                                            onClick={detectarVariables}
+                                            onClick={() => {
+                                                if (dataSourceConfig.protocol === 'http') {
+                                                    detectarVariablesHTTP();
+
+                                                } if (dataSourceConfig.protocol === 'mqtt') {
+
+                                                    detectarVariablesMQTT();
+                                                }
+                                            }}
                                             className="text-orange-400 hover:text-orange-300 text-sm underline mt-2"
                                         >
                                             Volver a intentar

@@ -1,4 +1,4 @@
-import { useState,useRef } from 'react';
+import { useState } from 'react';
 import { CheckCircle, XCircle, Loader2, HelpCircle } from 'lucide-react';
 import FormatoWebSocket from '../Foramatos/FormatoWebSocket';
 
@@ -20,6 +20,10 @@ const ConfigWebSocket = ({ onConnectionStateChange, onConfigChange }: ConfigWebS
         token: '',
         useToken: false
     });
+
+    const camposObligatoriosCompletos = () => {
+        return config.url.trim() !== '';
+    };
 
     const probarConexionWebSocket = () => {
         setConnectionState('testing');
@@ -151,11 +155,12 @@ const ConfigWebSocket = ({ onConnectionStateChange, onConfigChange }: ConfigWebS
             <div className="mt-6 flex items-center flex-wrap gap-3">
                 <button
                     onClick={probarConexionWebSocket}
-                    disabled={connectionState === 'testing'}
-                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center 
-                    ${connectionState === 'testing'
+                    disabled={connectionState === 'testing' || !camposObligatoriosCompletos()}
+                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors
+                    ${connectionState === 'testing' || !camposObligatoriosCompletos()
                             ? 'bg-gray-600 cursor-not-allowed'
                             : 'bg-orange-400 hover:bg-orange-500'}`}
+                    title={!camposObligatoriosCompletos() ? 'Complete la URL para continuar' : ''}
                 >
                     {connectionState === 'testing' && (
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />

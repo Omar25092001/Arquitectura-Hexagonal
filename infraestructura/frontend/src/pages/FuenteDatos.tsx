@@ -118,7 +118,7 @@ export default function FuenteDatos() {
     };
 
     const handleSiguientePaso = () => {
-        // 👈 GUARDAR CONFIGURACIÓN EN LOCALSTORAGE ANTES DE NAVEGAR
+        //  GUARDAR CONFIGURACIÓN EN LOCALSTORAGE ANTES DE NAVEGAR
         const currentProtocol = selectedDataSource === 'mqtt' ? selectedProtocol : selectedDataSource;
         const currentConfig = configurations[currentProtocol as keyof typeof configurations];
 
@@ -126,7 +126,7 @@ export default function FuenteDatos() {
             protocol: currentProtocol,
             config: currentConfig
         };
-
+        console.log(' Guardando en localStorage:', dataSourceInfo);
         localStorage.setItem('dataSourceConfig', JSON.stringify(dataSourceInfo));
         navigate('/variables');
     };

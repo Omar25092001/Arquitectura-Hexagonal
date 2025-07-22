@@ -26,11 +26,17 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setConfig(prev => ({
-            ...prev,
+        const newConfig = {
+            ...config,
             [name]: value
-        }));
+        };
+        setConfig(newConfig);
         
+        onConfigChange?.(newConfig);
+    };
+
+    const camposObligatoriosCompletos = () => {
+        return config.url.trim() !== '' && config.endpoint.trim() !== '';
     };
 
     const probarConexionHttp = async () => {
@@ -38,31 +44,65 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
         onConnectionStateChange?.('testing');
         setConnectionMessage('Probando conexión...');
 
+        // CONSTRUIR URL COMPLETA
         const urlCompleta = config.url + config.endpoint;
 
         try {
-            const response = await fetch(urlCompleta, {
+            const requestOptions: RequestInit = {
                 method: config.method,
-                headers: config.password
-                    ? { Authorization: `Bearer ${config.password}` }
-                    : undefined,
+                headers: {}
+            };
+            // AGREGAR AUTENTICACIÓN SI SE PROPORCIONA
+            if (config.password) {
+                requestOptions.headers = {
+                    'Authorization': `Bearer ${config.password}`,
+                    'Content-Type': 'application/json'
+                };
+            }
+
+            console.log('🔍 Probando conexión HTTP:', {
+                url: urlCompleta,
+                method: config.method,
+                hasAuth: !!config.password
             });
 
+            const response = await fetch(urlCompleta, requestOptions);
             if (response.ok) {
+                const contentType = response.headers.get('content-type') || '';
+                
+                
                 setConnectionState('success');
                 onConnectionStateChange?.('success');
-                setConnectionMessage('Conexión exitosa. El servidor respondió correctamente.');
+                setConnectionMessage(`Conexión exitosa. Servidor respondió con ${response.status}. Content-Type: ${contentType}`);
+                
+                // GUARDAR CONFIGURACIÓN COMPLETA AL CONECTAR EXITOSAMENTE
+                const configCompleta = {
+                    ...config,
+                    url: urlCompleta, // Guardar URL completa
+                    headers: requestOptions.headers
+                };
+                console.log('📝 Actualizando configuración http:', configCompleta);
+                onConfigChange?.(configCompleta);
+                
             } else {
                 setConnectionState('error');
                 onConnectionStateChange?.('error');
-                setConnectionMessage(`Error: El servidor respondió con código ${response.status}.`);
+                setConnectionMessage(`Error: El servidor respondió con código ${response.status} - ${response.statusText}`);
+                
+                console.error('Error HTTP:', {
+                    status: response.status,
+                    statusText: response.statusText
+                });
             }
         } catch (error: any) {
             setConnectionState('error');
             onConnectionStateChange?.('error');
             setConnectionMessage('Error: No se pudo establecer la conexión. ' + error.message);
+            
+            console.error('Error de conexión:', error);
         }
     };
+
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -134,11 +174,12 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
             <div className="mt-6 flex items-center flex-wrap gap-3">
                 <button
                     onClick={probarConexionHttp}
-                    disabled={connectionState === 'testing'}
-                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center 
-                    ${connectionState === 'testing'
+                    disabled={connectionState === 'testing' || !camposObligatoriosCompletos()}
+                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors
+                    ${connectionState === 'testing' || !camposObligatoriosCompletos()
                             ? 'bg-gray-600 cursor-not-allowed'
                             : 'bg-orange-400 hover:bg-orange-500'}`}
+                    title={!camposObligatoriosCompletos() ? 'Complete URL y Endpoint para continuar' : ''}
                 >
                     {connectionState === 'testing' && (
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />

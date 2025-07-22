@@ -26,6 +26,10 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
     const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [connectionMessage, setConnectionMessage] = useState('');
 
+    const camposObligatoriosCompletos = () => {
+        return mqttConfig.ip.trim() !== '' && mqttConfig.topic.trim() !== '';
+    };
+
     const ProbarConexionMQTT = () => {
 
         if (timeoutRef.current) {
@@ -82,8 +86,8 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
         const newConfig = { ...mqttConfig, [name]: value };
         setMqttConfig(newConfig);
         
-        // 👈 ENVIAR CONFIGURACIÓN AL PADRE
-        console.log('Enviando config MQTT:', newConfig); // 👈 DEBUGGING
+        // ENVIAR CONFIGURACIÓN AL PADRE
+        console.log('Enviando config MQTT:', newConfig);
         onConfigChange?.(newConfig);
     };
 
@@ -160,13 +164,14 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
             </div>
             {/* Botón y estado de conexión con círculo indicador */}
             <div className="mt-6 flex items-center flex-wrap gap-3">
-                <button
+               <button
                     onClick={ProbarConexionMQTT}
-                    disabled={connectionState === 'testing'}
-                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center 
-                    ${connectionState === 'testing'
+                    disabled={connectionState === 'testing' || !camposObligatoriosCompletos()}
+                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors
+                    ${connectionState === 'testing' || !camposObligatoriosCompletos()
                             ? 'bg-gray-600 cursor-not-allowed'
                             : 'bg-orange-400 hover:bg-orange-500'}`}
+                    title={!camposObligatoriosCompletos() ? 'Complete IP y Tópico para continuar' : ''}
                 >
                     {connectionState === 'testing' && (
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
