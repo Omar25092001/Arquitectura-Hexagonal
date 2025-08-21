@@ -118,18 +118,30 @@ export default function FuenteDatos() {
     };
 
     const handleSiguientePaso = () => {
-        //  GUARDAR CONFIGURACIÓN EN LOCALSTORAGE ANTES DE NAVEGAR
-        const currentProtocol = selectedDataSource === 'mqtt' ? selectedProtocol : selectedDataSource;
-        const currentConfig = configurations[currentProtocol as keyof typeof configurations];
+    const currentProtocol = selectedDataSource === 'mqtt' ? selectedProtocol : selectedDataSource;
+    const currentConfig = configurations[currentProtocol as keyof typeof configurations];
 
-        const dataSourceInfo = {
+    let dataSourceInfo;
+    
+    if (currentProtocol === 'file') {
+        //PARA ARCHIVOS: SOLO GUARDAR METADATOS, NO EL ARCHIVO
+        const fileConfig = currentConfig as any;
+        const { file, ...configSinArchivo } = fileConfig || {};
+        dataSourceInfo = {
+            protocol: currentProtocol,
+            config: configSinArchivo,
+            needsFile: true // BANDERA PARA INDICAR QUE NECESITA ARCHIVO
+        };
+    } else {
+        dataSourceInfo = {
             protocol: currentProtocol,
             config: currentConfig
         };
-        console.log(' Guardando en localStorage:', dataSourceInfo);
-        localStorage.setItem('dataSourceConfig', JSON.stringify(dataSourceInfo));
-        navigate('/variables');
-    };
+    }
+    
+    localStorage.setItem('dataSourceConfig', JSON.stringify(dataSourceInfo));
+    navigate('/variables');
+};
 
     const hasSuccessfulConnection = Object.values(estadoConexion).includes('success');
 
@@ -232,7 +244,12 @@ export default function FuenteDatos() {
                             {selectedDataSource === 'influx' &&
                                 <ConfigInflux onConnectionStateChange={(state) => actualizarEstadoConexion('influx', state)}
                                     onConfigChange={(config) => actualizarConfiguracion('influx', config)} />}
-                            {selectedDataSource === 'file' && <ConfigExcel />}
+                            {selectedDataSource === 'file' && 
+                                <ConfigExcel 
+                                    onConnectionStateChange={(state) => actualizarEstadoConexion('file', state)}
+                                    onConfigChange={(config) => actualizarConfiguracion('file', config)} 
+                                />
+                            }
                         </div>
 
                         {/* Botón de acción */}

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { CheckCircle, XCircle, Loader2, HelpCircle } from 'lucide-react';
 import mqtt from 'mqtt';
-import FormatoMQTT from '../Foramatos/FormatoMQTT';
+import FormatoMQTT from '../Formatos/FormatoMQTT';
 
 interface ConfigMQTTProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;

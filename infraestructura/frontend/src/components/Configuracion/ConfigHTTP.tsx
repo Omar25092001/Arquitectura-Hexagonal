@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, XCircle, Loader2, HelpCircle } from 'lucide-react';
-import FormatoHTTP from '../Foramatos/FormatoHTTP';
+import FormatoHTTP from '../Formatos/FormatoHTTP';
 
 interface ConfigHTTPProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;

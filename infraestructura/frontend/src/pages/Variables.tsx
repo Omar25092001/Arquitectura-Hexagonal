@@ -3,6 +3,8 @@ import Header from '../components/Header';
 import { CheckCircle, ArrowRight, Check, X, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import mqtt from 'mqtt';
+import * as ExcelJS from 'exceljs';
+import { InfluxDB } from '@influxdata/influxdb-client';
 
 export default function Variables() {
     const navigate = useNavigate();
@@ -13,6 +15,8 @@ export default function Variables() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [showFileModal, setShowFileModal] = useState(false);
 
     // PASOS DE NAVEGACIÓN
     const steps = [
@@ -31,13 +35,16 @@ export default function Variables() {
         }
 
         const config = JSON.parse(savedConfig);
-        if (!['mqtt', 'http'].includes(config.protocol)) {
+        if (!['mqtt', 'http', 'websocket', 'file', 'influx'].includes(config.protocol)) {
             console.log('protocolo no soportado:', config.protocol)
             navigate('/fuente-datos');
             return;
         }
 
         setDataSourceConfig(config);
+        if (config.needsFile) {
+            setShowFileModal(true);
+        }
     }, [navigate]);
 
     //  FUNCIÓN PARA PARSEAR EL MENSAJE MQTT
@@ -283,6 +290,356 @@ export default function Variables() {
         }
     };
 
+    const detectarVariablesWebSocket = async () => {
+        if (!dataSourceConfig?.config) return;
+
+        setIsLoading(true);
+        setError(null);
+        setSelectedVariables([]); // Limpiar selección
+
+        const config = dataSourceConfig.config;
+
+        try {
+            const variables = await new Promise<any[]>((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('No se recibieron mensajes en 30 segundos'));
+                }, 30000);
+
+                const ws = new WebSocket(config.url);
+
+                ws.onopen = () => {
+
+                    // Enviar token si está configurado
+                    if (config.useToken && config.token) {
+                        ws.send(JSON.stringify({ token: config.token }));
+                        console.log('🔑 Token enviado');
+                    }
+
+                    console.log('🔌 Esperando mensajes WebSocket...');
+                };
+
+                ws.onmessage = (event) => {
+                    clearTimeout(timeout);
+                    const mensajeRecibido = event.data;
+                    console.log('MENSAJE WEBSOCKET RECIBIDO:', mensajeRecibido);
+
+                    try {
+                        const variablesDetectadas = parsearMensaje(mensajeRecibido);
+
+                        if (variablesDetectadas.length === 0) {
+                            ws.close();
+                            reject(new Error('No se detectaron variables válidas en el mensaje. Verifica el formato: {"variable": valor} o variable=valor|variable=valor|...'));
+                            return;
+                        }
+
+                        ws.close();
+                        resolve(variablesDetectadas);
+
+                    } catch (parseError: any) {
+                        ws.close();
+                        reject(new Error('Error parseando mensaje: ' + parseError.message));
+                    }
+                };
+
+                ws.onerror = () => {
+                    clearTimeout(timeout);
+                    ws.close();
+                    reject(new Error('Error de conexión WebSocket'));
+                };
+
+                ws.onclose = (event) => {
+                    if (!event.wasClean) {
+                        clearTimeout(timeout);
+                        reject(new Error('Conexión WebSocket cerrada inesperadamente'));
+                    }
+                };
+            });
+
+            setVariables(variables);
+            setLastFetchTime(new Date());
+
+        } catch (error: any) {
+            console.error('Error en WebSocket:', error);
+            setError(`Error en WebSocket: ${error.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+
+            // Validar que sea Excel
+            const isExcelFile = /\.xlsx?$/.test(file.name);
+            if (!isExcelFile) {
+                setError('Por favor selecciona un archivo Excel (.xlsx o .xls)');
+                return;
+            }
+
+            setSelectedFile(file);
+            setShowFileModal(false);
+            setError(null);
+            console.log('Archivo seleccionado:', file.name);
+        }
+    };
+
+    //  FUNCIÓN ACTUALIZADA PARA DETECTAR VARIABLES EXCEL
+    const detectarVariablesExcel = async () => {
+        if (!dataSourceConfig?.config) return;
+
+        // VERIFICAR QUE TENGAMOS ARCHIVO
+        if (!selectedFile) {
+            setError('Por favor selecciona un archivo Excel primero.');
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setSelectedVariables([]);
+
+        const config = dataSourceConfig.config;
+        console.log('📋 Procesando archivo Excel:', selectedFile.name);
+
+        try {
+            const headers = await new Promise<string[]>((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = async (e) => {
+                    try {
+                        const buffer = e.target?.result as ArrayBuffer;
+                        const workbook = new ExcelJS.Workbook();
+
+                        await workbook.xlsx.load(buffer);
+                        console.log('📚 Hojas disponibles:', workbook.worksheets.map(ws => ws.name));
+
+                        let worksheet;
+                        if (config.useSheetName && config.sheetName) {
+                            worksheet = workbook.getWorksheet(config.sheetName);
+                            if (!worksheet) {
+                                const availableSheets = workbook.worksheets.map(ws => ws.name).join(', ');
+                                reject(new Error(`La hoja "${config.sheetName}" no existe. Hojas disponibles: ${availableSheets}`));
+                                return;
+                            }
+                            console.log(`📄 Usando hoja: "${config.sheetName}"`);
+                        } else {
+                            const sheetIndex = parseInt(config.sheetIndex) || 0;
+                            if (sheetIndex >= workbook.worksheets.length) {
+                                reject(new Error(`El índice ${sheetIndex} está fuera del rango. El archivo tiene ${workbook.worksheets.length} hojas`));
+                                return;
+                            }
+                            worksheet = workbook.worksheets[sheetIndex];
+                            console.log(`📄 Usando hoja índice ${sheetIndex}: "${worksheet.name}"`);
+                        }
+
+                        if (worksheet.rowCount === 0) {
+                            reject(new Error('La hoja seleccionada está vacía'));
+                            return;
+                        }
+
+                        const firstRow = worksheet.getRow(1);
+                        const headers: string[] = [];
+
+                        firstRow.eachCell((cell, colNumber) => {
+                            const headerValue = cell.value ? String(cell.value).trim() : `Columna_${colNumber}`;
+                            if (headerValue) {
+                                headers.push(headerValue);
+                            }
+                        });
+
+                        if (headers.length === 0) {
+                            for (let col = 1; col <= (firstRow.cellCount || 10); col++) {
+                                const cell = firstRow.getCell(col);
+                                const headerValue = cell.value ? String(cell.value).trim() : `Columna_${col}`;
+                                headers.push(headerValue);
+                            }
+                        }
+
+                        console.log('📋 Cabeceras detectadas:', headers);
+
+                        if (headers.length === 0) {
+                            reject(new Error('No se encontraron cabeceras en la primera fila de la hoja'));
+                            return;
+                        }
+
+                        resolve(headers.filter(header => header.trim() !== ''));
+                    } catch (error: any) {
+                        reject(new Error(`Error procesando Excel: ${error.message}`));
+                    }
+                };
+
+                reader.onerror = () => reject(new Error('Error leyendo el archivo'));
+                reader.readAsArrayBuffer(selectedFile);
+            });
+
+            const variablesDetectadas = headers.map((header, index) => ({
+                id: index + 1,
+                name: header,
+                dataType: 'Texto',
+                current: `Columna ${index + 1}`,
+                originalValue: header,
+                fullPath: header,
+                columnIndex: index
+            }));
+
+
+
+            setVariables(variablesDetectadas);
+            setLastFetchTime(new Date());
+
+
+        } catch (error: any) {
+
+            setError(`Error procesando Excel: ${error.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const detectarVariablesInflux = async () => {
+        if (!dataSourceConfig?.config) return;
+
+        setIsLoading(true);
+        setError(null);
+        setSelectedVariables([]);
+
+        const config = dataSourceConfig.config;
+        console.log('Detectando variables desde InfluxDB:', config);
+
+        try {
+            // Crear cliente InfluxDB
+            const client = new InfluxDB({
+                url: config.url,
+                token: config.token,
+            });
+
+            const queryApi = client.getQueryApi(config.org);
+
+            // Query para obtener los fields del measurement
+            const fieldsQuery = `
+            import "influxdata/influxdb/schema"
+            
+            schema.measurementFieldKeys(
+                bucket: "${config.bucket}",
+                measurement: "${config.measurement}"
+            )
+        `;
+
+            console.log('Ejecutando query para fields:', fieldsQuery);
+
+            // Obtener fields disponibles
+            const fieldRows = await queryApi.collectRows(fieldsQuery);
+
+            if (fieldRows.length === 0) {
+                throw new Error(`No se encontraron fields en el measurement "${config.measurement}"`);
+            }
+
+            console.log('Fields encontrados:', fieldRows);
+
+            // Query para obtener datos recientes y detectar tipos
+            const dataQuery = `
+            from(bucket: "${config.bucket}")
+            |> range(start: -24h)
+            |> filter(fn: (r) => r._measurement == "${config.measurement}")
+            |> last()
+            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+        `;
+
+            console.log('Ejecutando query para datos recientes:', dataQuery);
+
+            const dataRows = await queryApi.collectRows(dataQuery);
+            console.log('Datos recientes:', dataRows);
+
+            // Crear mapa de tipos de datos basado en los datos recientes
+            const fieldTypes: { [key: string]: string } = {};
+
+            if (dataRows.length > 0) {
+                const sampleRow = dataRows[0] as any;
+                fieldRows.forEach((fieldRow: any) => {
+                    const fieldName = fieldRow._value;
+                    const fieldValue = sampleRow[fieldName];
+
+                    if (fieldValue !== undefined && fieldValue !== null) {
+                        if (typeof fieldValue === 'number') {
+                            fieldTypes[fieldName] = Number.isInteger(fieldValue) ? 'Numérico (Entero)' : 'Numérico (Decimal)';
+                        } else if (typeof fieldValue === 'boolean') {
+                            fieldTypes[fieldName] = 'Booleano';
+                        } else if (typeof fieldValue === 'string') {
+                            // Intentar detectar si es un número como string
+                            const numValue = parseFloat(fieldValue);
+                            if (!isNaN(numValue) && isFinite(numValue)) {
+                                fieldTypes[fieldName] = 'Numérico (String)';
+                            } else {
+                                fieldTypes[fieldName] = 'Texto';
+                            }
+                        } else {
+                            fieldTypes[fieldName] = 'Desconocido';
+                        }
+                    } else {
+                        fieldTypes[fieldName] = 'Sin datos';
+                    }
+                });
+            }
+
+            // Convertir fields a formato de variables
+            const variablesDetectadas = fieldRows.map((fieldRow: any, index: number) => {
+                const fieldName = fieldRow._value;
+                const dataType = fieldTypes[fieldName] || 'Desconocido';
+
+                // Obtener valor actual si existe
+                let currentValue = 'Sin datos';
+                if (dataRows.length > 0) {
+                    const sampleRow = dataRows[0] as any;
+                    const value = sampleRow[fieldName];
+                    if (value !== undefined && value !== null) {
+                        currentValue = String(value);
+                    }
+                }
+
+                return {
+                    id: index + 1,
+                    name: fieldName,
+                    dataType: dataType,
+                    current: currentValue,
+                    originalValue: fieldName,
+                    fullPath: `${config.measurement}.${fieldName}`,
+                    measurement: config.measurement,
+                    bucket: config.bucket
+                };
+            });
+
+            console.log('Variables detectadas desde InfluxDB:', variablesDetectadas);
+
+            if (variablesDetectadas.length === 0) {
+                throw new Error(`No se encontraron fields válidos en el measurement "${config.measurement}"`);
+            }
+
+            setVariables(variablesDetectadas);
+            setLastFetchTime(new Date());
+            console.log(`${variablesDetectadas.length} variables InfluxDB detectadas`);
+
+        } catch (error: any) {
+            console.error('Error detectando variables InfluxDB:', error);
+
+            // Manejar errores específicos
+            if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+                setError('Error de autenticación: Token de API inválido o sin permisos.');
+            } else if (error.message?.includes('404') || error.message?.includes('bucket')) {
+                setError(`Error: El bucket "${config.bucket}" no existe o no tienes acceso.`);
+            } else if (error.message?.includes('measurement')) {
+                setError(`Error: No se encontraron datos en el measurement "${config.measurement}". Verifica que existan datos recientes.`);
+            } else if (error.message?.includes('organization')) {
+                setError(`Error: La organización "${config.org}" no existe.`);
+            } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+                setError('Error de red: No se puede conectar a InfluxDB. Verifica la URL.');
+            } else {
+                setError(`Error detectando variables: ${error.message}`);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
     //MANEJAR SELECCIÓN DE VARIABLES
     const toggleVariableSelection = (id: number) => {
         setSelectedVariables(prev => {
@@ -353,10 +710,19 @@ export default function Variables() {
                                             console.log('entra en http')
                                             detectarVariablesHTTP();
 
-                                        } if (dataSourceConfig.protocol === 'mqtt') {
+                                        } else if (dataSourceConfig.protocol === 'mqtt') {
 
                                             detectarVariablesMQTT();
+                                        } else if (dataSourceConfig.protocol === 'websocket') {
+                                            detectarVariablesWebSocket();
+                                        } else if (dataSourceConfig.protocol === 'file') {
+                                            detectarVariablesExcel();
+                                        } else if (dataSourceConfig.protocol === 'influx') {
+                                            detectarVariablesInflux();
+                                        } else {
+                                            console.error('Protocolo no soportado:', dataSourceConfig.protocol);
                                         }
+
                                     }}
                                     disabled={isLoading}
                                     className="flex items-center px-3 py-2 bg-orange-400 hover:bg-orange-500 disabled:bg-gray-600 text-white rounded-lg text-sm transition-colors"
@@ -386,10 +752,14 @@ export default function Variables() {
                                     onClick={() => {
                                         if (dataSourceConfig.protocol === 'http') {
                                             detectarVariablesHTTP();
-
-                                        } if (dataSourceConfig.protocol === 'mqtt') {
-
+                                        } else if (dataSourceConfig.protocol === 'mqtt') {
                                             detectarVariablesMQTT();
+                                        } else if (dataSourceConfig.protocol === 'websocket') {
+                                            detectarVariablesWebSocket();
+                                        } else if (dataSourceConfig.protocol === 'file') {
+                                            detectarVariablesExcel();
+                                        } else if (dataSourceConfig.protocol === 'influx') {
+                                            detectarVariablesInflux();
                                         }
                                     }}
                                     className="text-red-400 hover:text-red-300 text-sm underline mt-2"
@@ -409,10 +779,14 @@ export default function Variables() {
                                             onClick={() => {
                                                 if (dataSourceConfig.protocol === 'http') {
                                                     detectarVariablesHTTP();
-
-                                                } if (dataSourceConfig.protocol === 'mqtt') {
-
+                                                } else if (dataSourceConfig.protocol === 'mqtt') {
                                                     detectarVariablesMQTT();
+                                                } else if (dataSourceConfig.protocol === 'websocket') {
+                                                    detectarVariablesWebSocket();
+                                                } else if (dataSourceConfig.protocol === 'file') {
+                                                    detectarVariablesExcel();
+                                                } else if (dataSourceConfig.protocol === 'influx') {
+                                                    detectarVariablesInflux();
                                                 }
                                             }}
                                             className="text-orange-400 hover:text-orange-300 text-sm underline mt-2"
@@ -506,6 +880,73 @@ export default function Variables() {
                         </div>
                     </div>
                 </div>
+                {showFileModal && (
+                    <div className="fixed inset-0 bg-[rgba(0,0,0,0.4)] flex items-center justify-center z-50 p-4">
+                        <div className="bg-secundary rounded-2xl shadow-xl w-full max-w-md">
+                            <div className="p-6">
+                                <h2 className="text-xl font-bold text-white mb-4">Seleccionar archivo Excel</h2>
+                                <p className="text-gray-300 text-sm mb-6">
+                                    Para continuar, necesitas seleccionar el archivo Excel que configuraste anteriormente.
+                                </p>
+
+                                <div className="space-y-4">
+                                    <label className="block">
+                                        <div className="w-full bg-orange-400 text-white px-4 py-3 rounded-lg flex items-center justify-center cursor-pointer hover:bg-orange-500 transition-colors">
+                                            Seleccionar archivo Excel
+                                        </div>
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept=".xlsx,.xls"
+                                            onChange={handleFileSelection}
+                                        />
+                                    </label>
+
+                                    {selectedFile && (
+                                        <div className="p-3 bg-background rounded-lg">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-white font-medium text-sm">{selectedFile.name}</p>
+                                                    <p className="text-gray-400 text-xs">
+                                                        {(selectedFile.size / 1024).toFixed(1)} KB
+                                                    </p>
+                                                </div>
+                                                <Check className="w-5 h-5 text-green-400" />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {error && (
+                                        <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded-lg">
+                                            <p className="text-red-300 text-sm">{error}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3 mt-6">
+                                    <button
+                                        onClick={() => {
+                                            setShowFileModal(false);
+                                            navigate('/fuente-datos');
+                                        }}
+                                        className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                                    >
+                                        Volver
+                                    </button>
+
+                                    {selectedFile && (
+                                        <button
+                                            onClick={() => setShowFileModal(false)}
+                                            className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
+                                        >
+                                            Continuar
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

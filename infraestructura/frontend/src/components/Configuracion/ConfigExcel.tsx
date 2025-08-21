@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { CheckCircle, XCircle, Loader2, FileSpreadsheet, Upload, File } from 'lucide-react';
+import * as ExcelJS from 'exceljs';
 
-const ConfigExcel = () => {
+interface ConfigExcelProps {
+    onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
+    onConfigChange?: (config: any) => void;
+}
+
+
+const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelProps) => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [excelConfig, setExcelConfig] = useState({
         sheetName: '',
@@ -14,6 +21,7 @@ const ConfigExcel = () => {
 
     const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [connectionMessage, setConnectionMessage] = useState('');
+    const [availableSheets, setAvailableSheets] = useState<string[]>([]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -23,25 +31,23 @@ const ConfigExcel = () => {
         }));
     };
 
-    const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, checked } = e.target;
-        setExcelConfig(prev => ({
-            ...prev,
-            [name]: checked
-        }));
-    };
-
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             setSelectedFile(file);
-            setExcelConfig(prev => ({
-                ...prev,
-                fileName: file.name
-            }));
-            // Reset connection state when file changes
+
             setConnectionState('idle');
             setConnectionMessage('');
+            setAvailableSheets([]);
+
+            const configCompleta = {
+                file: file,
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type
+            };
+            console.log('📝 Enviando config Excel (archivo):', configCompleta);
+            onConfigChange?.(configCompleta);
         }
     };
 
@@ -52,45 +58,119 @@ const ConfigExcel = () => {
         }));
     };
 
-    const testConnection = () => {
+    const testConnection = async () => {
+        if (!selectedFile) {
+            setConnectionState('error');
+            onConnectionStateChange?.('error');
+            setConnectionMessage('Error: Debe seleccionar un archivo Excel');
+            return;
+        }
+
         setConnectionState('testing');
-        setConnectionMessage('Verificando archivo Excel...');
-        
-        // Simulación de tiempo de respuesta
-        setTimeout(() => {
-            // Validación básica
-            if (!selectedFile) {
-                setConnectionState('error');
-                setConnectionMessage('Error: Debe seleccionar un archivo Excel (.xlsx o .xls)');
-                return;
+        onConnectionStateChange?.('testing');
+        setConnectionMessage('Analizando archivo Excel...');
+
+        try {
+            // Leer el archivo con ExcelJS
+            const buffer = await selectedFile.arrayBuffer();
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(buffer);
+
+            // Obtener nombres de las hojas
+            const sheetNames = workbook.worksheets.map(ws => ws.name);
+            setAvailableSheets(sheetNames);
+
+            console.log('Hojas disponibles:', sheetNames);
+
+            // Validar configuración específica
+            let worksheet;
+            let sheetInfo = '';
+
+            if (excelConfig.useSheetName) {
+                if (!excelConfig.sheetName.trim()) {
+                    throw new Error('Debe especificar un nombre de hoja');
+                }
+
+                worksheet = workbook.getWorksheet(excelConfig.sheetName);
+                if (!worksheet) {
+                    throw new Error(`La hoja "${excelConfig.sheetName}" no existe. Hojas disponibles: ${sheetNames.join(', ')}`);
+                }
+                sheetInfo = `hoja "${excelConfig.sheetName}"`;
+            } else {
+                const sheetIndex = parseInt(excelConfig.sheetIndex);
+                if (isNaN(sheetIndex) || sheetIndex < 0) {
+                    throw new Error('El índice de la hoja debe ser un número entero no negativo');
+                }
+
+                if (sheetIndex >= workbook.worksheets.length) {
+                    throw new Error(`El índice ${sheetIndex} está fuera del rango. El archivo tiene ${workbook.worksheets.length} hojas`);
+                }
+
+                worksheet = workbook.worksheets[sheetIndex];
+                sheetInfo = `hoja con índice ${sheetIndex} ("${worksheet.name}")`;
             }
 
-            const isExcelFile = /\.xlsx?$/.test(selectedFile.name);
-            if (!isExcelFile) {
-                setConnectionState('error');
-                setConnectionMessage('Error: El archivo seleccionado no es un archivo Excel válido (.xlsx o .xls)');
-                return;
+            // Verificar que la hoja tenga datos
+            if (worksheet.rowCount === 0) {
+                throw new Error(`La ${sheetInfo} está vacía`);
             }
 
-            if (excelConfig.useSheetName && !excelConfig.sheetName.trim()) {
-                setConnectionState('error');
-                setConnectionMessage('Error: Debe especificar un nombre de hoja');
-                return;
+            // Verificar que tenga al menos cabeceras
+            const firstRow = worksheet.getRow(1);
+            let hasHeaders = false;
+            firstRow.eachCell((cell) => {
+                if (cell.value && String(cell.value).trim()) {
+                    hasHeaders = true;
+                }
+            });
+
+            if (!hasHeaders) {
+                throw new Error(`La ${sheetInfo} no tiene cabeceras válidas en la primera fila`);
             }
 
-            if (!excelConfig.useSheetName && (isNaN(parseInt(excelConfig.sheetIndex)) || parseInt(excelConfig.sheetIndex) < 0)) {
-                setConnectionState('error');
-                setConnectionMessage('Error: El índice de la hoja debe ser un número entero no negativo');
-                return;
+            // Contar filas con datos
+            let dataRows = 0;
+            for (let i = 2; i <= worksheet.rowCount; i++) {
+                const row = worksheet.getRow(i);
+                let hasData = false;
+                row.eachCell((cell) => {
+                    if (cell.value && String(cell.value).trim()) {
+                        hasData = true;
+                    }
+                });
+                if (hasData) dataRows++;
             }
 
-            // Si pasa todas las validaciones
+            // Todo OK
             setConnectionState('success');
-            const sheetInfo = excelConfig.useSheetName 
-                ? `hoja "${excelConfig.sheetName}"` 
-                : `hoja con índice ${excelConfig.sheetIndex}`;
-            setConnectionMessage(`Archivo Excel válido. Se leerán datos de la ${sheetInfo} del archivo ${selectedFile.name}`);
-        }, 1200);
+            onConnectionStateChange?.('success');
+            setConnectionMessage(
+                `Archivo Excel válido. Se leerán datos de la ${sheetInfo}. ` +
+                `Encontradas ${dataRows} filas de datos en el archivo ${selectedFile.name}.`
+            );
+
+            // Enviar configuración completa
+            const configCompleta = {
+                file: selectedFile,
+                fileName: selectedFile.name,
+                fileSize: selectedFile.size,
+                fileType: selectedFile.type,
+                sheetName: excelConfig.sheetName,
+                sheetIndex: excelConfig.sheetIndex,
+                useSheetName: excelConfig.useSheetName,
+                availableSheets: sheetNames,
+                dataRows: dataRows,
+                isValid: true
+            };
+            console.log('Configuración Excel validada:', configCompleta);
+            onConfigChange?.(configCompleta);
+
+        } catch (error: any) {
+            console.error('Error verificando archivo Excel:', error);
+            setConnectionState('error');
+            onConnectionStateChange?.('error');
+            setConnectionMessage(`Error: ${error.message}`);
+        }
     };
 
     return (
@@ -102,7 +182,7 @@ const ConfigExcel = () => {
                 <p className="text-sm text-gray-400 mb-4 text-center">
                     Formatos compatibles: Excel (.xlsx, .xls)
                 </p>
-                
+
                 <label className="bg-orange-400 text-white px-4 py-2 rounded-lg flex items-center cursor-pointer hover:bg-orange-500 transition-colors">
                     <Upload className="w-5 h-5 mr-2" />
                     Seleccionar archivo
@@ -127,7 +207,7 @@ const ConfigExcel = () => {
             {selectedFile && (
                 <div className="bg-background-transparent p-4 rounded-lg">
                     <h3 className="text-white font-medium mb-3">Configuración de la hoja</h3>
-                    
+
                     <div className="space-y-3">
                         <div className="flex items-center space-x-4">
                             <label className="inline-flex items-center">
@@ -140,7 +220,7 @@ const ConfigExcel = () => {
                                 />
                                 <span className="ml-2 text-sm text-white">Por nombre</span>
                             </label>
-                            
+
                             <label className="inline-flex items-center">
                                 <input
                                     type="radio"
@@ -152,7 +232,7 @@ const ConfigExcel = () => {
                                 <span className="ml-2 text-sm text-white">Por índice</span>
                             </label>
                         </div>
-                        
+
                         {excelConfig.useSheetName ? (
                             <div>
                                 <label htmlFor="sheetName" className="block text-sm font-medium text-white mb-1">
@@ -192,22 +272,22 @@ const ConfigExcel = () => {
                             </div>
                         )}
                     </div>
-                    
+
 
                 </div>
             )}
-            
+
             {/* Botón y estado de validación */}
             <div className="mt-6 mb-2 flex flex-wrap items-start gap-3">
                 <button
                     onClick={testConnection}
                     disabled={connectionState === 'testing' || !selectedFile}
                     className={`px-4 py-2 rounded-lg text-white font-medium flex items-center 
-                    ${connectionState === 'testing' 
-                        ? 'bg-gray-600 cursor-not-allowed' 
-                        : !selectedFile 
+                    ${connectionState === 'testing'
                             ? 'bg-gray-600 cursor-not-allowed'
-                            : 'bg-orange-400 hover:bg-orange-500'}`}
+                            : !selectedFile
+                                ? 'bg-gray-600 cursor-not-allowed'
+                                : 'bg-orange-400 hover:bg-orange-500'}`}
                 >
                     {connectionState === 'testing' && (
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -217,7 +297,7 @@ const ConfigExcel = () => {
                     )}
                     Verificar archivo Excel
                 </button>
-                
+
                 <div className="flex mt-2 items-center space-x-3">
                     {connectionState === 'success' && (
                         <div className="flex items-center">
@@ -225,7 +305,7 @@ const ConfigExcel = () => {
                             <span className="ml-2 text-sm font-medium text-green-400">Archivo válido</span>
                         </div>
                     )}
-                    
+
                     {connectionState === 'error' && (
                         <div className="flex items-center">
                             <div className="h-4 w-4 rounded-full bg-red-500 shadow-lg"></div>
@@ -244,17 +324,16 @@ const ConfigExcel = () => {
                         {connectionState === 'testing' && <Loader2 className="w-5 h-5 mr-2 animate-spin text-gray-300" />}
                         {connectionState === 'success' && <CheckCircle className="w-5 h-5 mr-2 text-green-400" />}
                         {connectionState === 'error' && <XCircle className="w-5 h-5 mr-2 text-red-400" />}
-                        <span className={`text-sm ${
-                            connectionState === 'success' ? 'text-green-400' : 
+                        <span className={`text-sm ${connectionState === 'success' ? 'text-green-400' :
                             connectionState === 'error' ? 'text-red-400' : 'text-gray-300'
-                        }`}>
+                            }`}>
                             {connectionMessage}
                         </span>
                     </div>
                 )}
             </div>
-            
-            
+
+
         </div>
     );
 };

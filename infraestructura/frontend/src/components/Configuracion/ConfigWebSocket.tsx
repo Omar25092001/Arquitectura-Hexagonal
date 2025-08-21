@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, XCircle, Loader2, HelpCircle } from 'lucide-react';
-import FormatoWebSocket from '../Foramatos/FormatoWebSocket';
+import FormatoWebSocket from '../Formatos/FormatoWebSocket';
 
 interface ConfigWebSocketProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
@@ -75,20 +75,29 @@ const ConfigWebSocket = ({ onConnectionStateChange, onConfigChange }: ConfigWebS
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setConfig(prev => ({
-            ...prev,
+        const newConfig = {
+            ...config,
             [name]: value
-        }));
+        };
+        setConfig(newConfig);
+        
+        // 👈 ENVIAR CONFIGURACIÓN AL PADRE INMEDIATAMENTE
+        console.log('📝 Enviando config WebSocket:', newConfig);
+        onConfigChange?.(newConfig);
     };
 
-
-
+    // 👈 MANEJAR CAMBIOS EN CHECKBOX
     const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, checked } = e.target;
-        setConfig(prev => ({
-            ...prev,
+        const newConfig = {
+            ...config,
             [name]: checked
-        }));
+        };
+        setConfig(newConfig);
+        
+        // 👈 ENVIAR CONFIGURACIÓN AL PADRE INMEDIATAMENTE
+        console.log('📝 Enviando config WebSocket (checkbox):', newConfig);
+        onConfigChange?.(newConfig);
     };
 
     return (
