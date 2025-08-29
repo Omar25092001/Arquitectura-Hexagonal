@@ -1,7 +1,8 @@
-import { useState,useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FaEyeSlash, FaEye } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
 import { loginUsuario } from '@/services/usuario.service';
+import { useUserStore } from '@/store/user.store';
 
 
 
@@ -11,14 +12,22 @@ const Login = () => {
     const [mostrarContrasena, setMostrarContrasena] = useState(false);
     const navigate = useNavigate();
 
+    const handleLogout = useUserStore((state) => state.handleLogout);
+    const onLogin = useUserStore((state) => state.handleLogin);
+
     const toggleMotrarContrasena = () => {
         setMostrarContrasena(!mostrarContrasena);
     };
 
     useEffect(() => {
+        localStorage.clear();
+        handleLogout();
+    }, []);
+
+    useEffect(() => {
         // Crear un estilo para los inputs autocompletados
         const style = document.createElement('style');
-         style.textContent = `
+        style.textContent = `
             input:-webkit-autofill,
             input:-webkit-autofill:hover, 
             input:-webkit-autofill:focus, 
@@ -29,7 +38,7 @@ const Login = () => {
             }
         `;
         document.head.appendChild(style);
-        
+
         return () => {
             document.head.removeChild(style);
         };
@@ -37,28 +46,28 @@ const Login = () => {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        try
-        {
+        try {
             const usuario = {
                 correo: email,
                 contrasena: password
             };
             const response = await loginUsuario(usuario);
-            if(response.message == 'Login exitoso') {
+            if (response.message == 'Login exitoso') {
+                onLogin(response.usuario.id, response.usuario.nombre, 'usuario', response.token);
                 console.log('Login attempt with:', { email, password });
-                navigate('/fuente-datos');
+                navigate('/usuario/fuente-datos');
             }
             else {
                 console.error('Login failed:', response);
                 console.log('Error al iniciar sesión. Por favor, verifica tus credenciales.');
             }
-           
+
         } catch (error) {
             console.error('Error during login:', error);
             console.log('Error al iniciar sesión. Por favor, verifica tus credenciales.');
             return;
         }
-         
+
     };
 
     return (
@@ -110,7 +119,7 @@ const Login = () => {
                                     className="absolute text-white inset-y-0 right-0 pr-3 flex items-center cursor-pointer"
                                     onClick={() => toggleMotrarContrasena()}
                                 >
-                                    {mostrarContrasena? <FaEyeSlash /> : <FaEye />}
+                                    {mostrarContrasena ? <FaEyeSlash /> : <FaEye />}
                                 </div>
                             </div>
                         </div>

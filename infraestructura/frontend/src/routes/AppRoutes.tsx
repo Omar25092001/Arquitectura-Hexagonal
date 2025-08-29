@@ -1,14 +1,19 @@
+import {lazy} from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { PrivateRouteUsuario } from './PrivateRouteUsuario';
+const UsuariosRoutes = lazy(() => import('./UsuarioRoutes'));
 import Login from '../pages/Login';
-import FuenteDatos from '@/pages/FuenteDatos';
-import Variables from '@/pages/Variables';
+
 const AppRoutes = () => {
     return (
         <BrowserRouter>
         <Routes>
             <Route path="/" element={<Login/>} />
-            <Route path="/fuente-datos" element={<FuenteDatos/>} />
-            <Route path="/variables" element={<Variables/>} />
+            <Route path="/usuario/*" element= {
+                <PrivateRouteUsuario>
+                    <UsuariosRoutes />
+                </PrivateRouteUsuario>
+            } />
         </Routes>
         </BrowserRouter>
     );
