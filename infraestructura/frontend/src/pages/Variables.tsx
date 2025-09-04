@@ -26,6 +26,13 @@ export default function Variables() {
         { id: 4, title: 'Ejecución', active: false }
     ];
 
+    const handleSiguientePaso = () => {
+        if (selectedVariables.length === 0) return;
+        // Guardar variables seleccionadas en localStorage
+        localStorage.setItem('selectedVariables', JSON.stringify(variables.filter(v => selectedVariables.includes(v.id))));
+        navigate('/usuario/algoritmo');
+    }
+
     // Cargar configuración
     useEffect(() => {
         const savedConfig = localStorage.getItem('dataSourceConfig');
@@ -515,108 +522,217 @@ export default function Variables() {
 
             const queryApi = client.getQueryApi(config.org);
 
-            // Query para obtener los fields del measurement
-            const fieldsQuery = `
-            import "influxdata/influxdb/schema"
-            
-            schema.measurementFieldKeys(
-                bucket: "${config.bucket}",
-                measurement: "${config.measurement}"
-            )
-        `;
+            if (config.useMeasurement && config.measurement) {
+                // CASO 1: CON MEASUREMENT ESPECÍFICO (comportamiento actual)
+                const fieldsQuery = `
+                import "influxdata/influxdb/schema"
+                
+                schema.measurementFieldKeys(
+                    bucket: "${config.bucket}",
+                    measurement: "${config.measurement}"
+                )
+            `;
 
-            console.log('Ejecutando query para fields:', fieldsQuery);
+                console.log('Ejecutando query para fields con measurement:', fieldsQuery);
 
-            // Obtener fields disponibles
-            const fieldRows = await queryApi.collectRows(fieldsQuery);
+                const fieldRows = await queryApi.collectRows(fieldsQuery);
 
-            if (fieldRows.length === 0) {
-                throw new Error(`No se encontraron fields en el measurement "${config.measurement}"`);
-            }
+                if (fieldRows.length === 0) {
+                    throw new Error(`No se encontraron fields en el measurement "${config.measurement}"`);
+                }
 
-            console.log('Fields encontrados:', fieldRows);
+                // Query para obtener datos recientes y detectar tipos
+                const dataQuery = `
+                from(bucket: "${config.bucket}")
+                |> range(start: -24h)
+                |> filter(fn: (r) => r._measurement == "${config.measurement}")
+                |> last()
+                |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+            `;
 
-            // Query para obtener datos recientes y detectar tipos
-            const dataQuery = `
-            from(bucket: "${config.bucket}")
-            |> range(start: -24h)
-            |> filter(fn: (r) => r._measurement == "${config.measurement}")
-            |> last()
-            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-        `;
+                const dataRows = await queryApi.collectRows(dataQuery);
 
-            console.log('Ejecutando query para datos recientes:', dataQuery);
-
-            const dataRows = await queryApi.collectRows(dataQuery);
-            console.log('Datos recientes:', dataRows);
-
-            // Crear mapa de tipos de datos basado en los datos recientes
-            const fieldTypes: { [key: string]: string } = {};
-
-            if (dataRows.length > 0) {
-                const sampleRow = dataRows[0] as any;
-                fieldRows.forEach((fieldRow: any) => {
-                    const fieldName = fieldRow._value;
-                    const fieldValue = sampleRow[fieldName];
-
-                    if (fieldValue !== undefined && fieldValue !== null) {
-                        if (typeof fieldValue === 'number') {
-                            fieldTypes[fieldName] = Number.isInteger(fieldValue) ? 'Numérico (Entero)' : 'Numérico (Decimal)';
-                        } else if (typeof fieldValue === 'boolean') {
-                            fieldTypes[fieldName] = 'Booleano';
-                        } else if (typeof fieldValue === 'string') {
-                            // Intentar detectar si es un número como string
-                            const numValue = parseFloat(fieldValue);
-                            if (!isNaN(numValue) && isFinite(numValue)) {
-                                fieldTypes[fieldName] = 'Numérico (String)';
-                            } else {
-                                fieldTypes[fieldName] = 'Texto';
-                            }
-                        } else {
-                            fieldTypes[fieldName] = 'Desconocido';
-                        }
-                    } else {
-                        fieldTypes[fieldName] = 'Sin datos';
-                    }
-                });
-            }
-
-            // Convertir fields a formato de variables
-            const variablesDetectadas = fieldRows.map((fieldRow: any, index: number) => {
-                const fieldName = fieldRow._value;
-                const dataType = fieldTypes[fieldName] || 'Desconocido';
-
-                // Obtener valor actual si existe
-                let currentValue = 'Sin datos';
+                // Crear mapa de tipos de datos
+                const fieldTypes: { [key: string]: string } = {};
                 if (dataRows.length > 0) {
                     const sampleRow = dataRows[0] as any;
-                    const value = sampleRow[fieldName];
-                    if (value !== undefined && value !== null) {
-                        currentValue = String(value);
+                    fieldRows.forEach((fieldRow: any) => {
+                        const fieldName = fieldRow._value;
+                        const fieldValue = sampleRow[fieldName];
+
+                        if (fieldValue !== undefined && fieldValue !== null) {
+                            if (typeof fieldValue === 'number') {
+                                fieldTypes[fieldName] = Number.isInteger(fieldValue) ? 'Numérico (Entero)' : 'Numérico (Decimal)';
+                            } else if (typeof fieldValue === 'boolean') {
+                                fieldTypes[fieldName] = 'Booleano';
+                            } else if (typeof fieldValue === 'string') {
+                                const numValue = parseFloat(fieldValue);
+                                if (!isNaN(numValue) && isFinite(numValue)) {
+                                    fieldTypes[fieldName] = 'Numérico (String)';
+                                } else {
+                                    fieldTypes[fieldName] = 'Texto';
+                                }
+                            } else {
+                                fieldTypes[fieldName] = 'Desconocido';
+                            }
+                        } else {
+                            fieldTypes[fieldName] = 'Sin datos';
+                        }
+                    });
+                }
+
+                // Convertir fields a formato de variables
+                const variablesDetectadas = fieldRows.map((fieldRow: any, index: number) => {
+                    const fieldName = fieldRow._value;
+                    const dataType = fieldTypes[fieldName] || 'Desconocido';
+
+                    let currentValue = 'Sin datos';
+                    if (dataRows.length > 0) {
+                        const sampleRow = dataRows[0] as any;
+                        const value = sampleRow[fieldName];
+                        if (value !== undefined && value !== null) {
+                            currentValue = String(value);
+                        }
+                    }
+
+                    return {
+                        id: index + 1,
+                        name: fieldName,
+                        dataType: dataType,
+                        current: currentValue,
+                        originalValue: fieldName,
+                        fullPath: `${config.measurement}.${fieldName}`,
+                        measurement: config.measurement,
+                        bucket: config.bucket
+                    };
+                });
+
+                setVariables(variablesDetectadas);
+                console.log(`${variablesDetectadas.length} variables detectadas desde measurement específico`);
+
+            } else {
+                // CASO 2: SIN MEASUREMENT ESPECÍFICO - EXPLORAR TODO EL BUCKET 
+
+                const measurementsQuery = `
+                import "influxdata/influxdb/schema"
+                schema.measurements(bucket: "${config.bucket}")
+            `;
+
+                console.log('Obteniendo measurements disponibles...');
+
+                const measurementRows = await queryApi.collectRows(measurementsQuery);
+
+                if (measurementRows.length === 0) {
+                    throw new Error(`No se encontraron measurements en el bucket "${config.bucket}"`);
+                }
+
+                console.log(`Encontrados ${measurementRows.length} measurements:`, measurementRows.map((r: any) => r._value));
+
+                // Obtener fields para cada measurement
+                const allVariables: any[] = [];
+                let variableId = 1;
+
+                for (const measurementRow of measurementRows) {
+                    const measurement = (measurementRow as any)._value;
+                    console.log(`Obteniendo fields para measurement: ${measurement}`);
+
+                    try {
+                        const fieldsQuery = `
+                        import "influxdata/influxdb/schema"
+                        schema.measurementFieldKeys(
+                            bucket: "${config.bucket}",
+                            measurement: "${measurement}"
+                        )
+                    `;
+
+                        const fieldRows = await queryApi.collectRows(fieldsQuery);
+                        console.log(`Fields encontrados en ${measurement}:`, fieldRows.map(r => (r as any)._value));
+
+                        // Obtener datos recientes para este measurement
+                        const dataQuery = `
+                        from(bucket: "${config.bucket}")
+                        |> range(start: -24h)
+                        |> filter(fn: (r) => r._measurement == "${measurement}")
+                        |> last()
+                        |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+                    `;
+
+                        const dataRows = await queryApi.collectRows(dataQuery);
+
+                        // Crear variables para este measurement
+                        fieldRows.forEach((fieldRow: any) => {
+                            const fieldName = fieldRow._value;
+                            let dataType = 'Sin datos';
+                            let currentValue = 'Sin datos';
+
+                            // Detectar tipo de datos
+                            if (dataRows.length > 0) {
+                                const sampleRow = dataRows[0] as any;
+                                const value = sampleRow[fieldName];
+
+                                if (value !== undefined && value !== null) {
+                                    currentValue = String(value);
+
+                                    if (typeof value === 'number') {
+                                        dataType = Number.isInteger(value) ? 'Numérico (Entero)' : 'Numérico (Decimal)';
+                                    } else if (typeof value === 'boolean') {
+                                        dataType = 'Booleano';
+                                    } else if (typeof value === 'string') {
+                                        const numValue = parseFloat(value);
+                                        if (!isNaN(numValue) && isFinite(numValue)) {
+                                            dataType = 'Numérico (String)';
+                                        } else {
+                                            dataType = 'Texto';
+                                        }
+                                    } else {
+                                        dataType = 'Desconocido';
+                                    }
+                                }
+                            }
+
+                            allVariables.push({
+                                id: variableId++,
+                                name: `${measurement}.${fieldName}`,
+                                dataType: dataType,
+                                current: currentValue,
+                                originalValue: fieldName,
+                                fullPath: `${measurement}.${fieldName}`,
+                                measurement: measurement,
+                                field: fieldName,
+                                bucket: config.bucket
+                            });
+                        });
+
+                    } catch (fieldError) {
+                        console.warn(`Error obteniendo fields para ${measurement}:`, fieldError);
+                        // Continuar con el siguiente measurement
                     }
                 }
 
-                return {
-                    id: index + 1,
-                    name: fieldName,
-                    dataType: dataType,
-                    current: currentValue,
-                    originalValue: fieldName,
-                    fullPath: `${config.measurement}.${fieldName}`,
-                    measurement: config.measurement,
-                    bucket: config.bucket
-                };
-            });
+                if (allVariables.length === 0) {
+                    throw new Error(`No se encontraron variables en ningún measurement del bucket "${config.bucket}"`);
+                }
 
-            console.log('Variables detectadas desde InfluxDB:', variablesDetectadas);
+                // Agrupar por measurement para mostrar información
+                const measurementGroups = allVariables.reduce((acc, variable) => {
+                    if (!acc[variable.measurement]) {
+                        acc[variable.measurement] = 0;
+                    }
+                    acc[variable.measurement]++;
+                    return acc;
+                }, {} as { [key: string]: number });
 
-            if (variablesDetectadas.length === 0) {
-                throw new Error(`No se encontraron fields válidos en el measurement "${config.measurement}"`);
+                const measurementSummary = Object.entries(measurementGroups)
+                    .map(([measurement, count]) => `${measurement} (${count} variables)`)
+                    .join(', ');
+
+                console.log(`Variables detectadas por measurement: ${measurementSummary}`);
+
+                setVariables(allVariables);
+                console.log(`${allVariables.length} variables detectadas desde todo el bucket`);
             }
 
-            setVariables(variablesDetectadas);
             setLastFetchTime(new Date());
-            console.log(`${variablesDetectadas.length} variables InfluxDB detectadas`);
 
         } catch (error: any) {
             console.error('Error detectando variables InfluxDB:', error);
@@ -626,8 +742,10 @@ export default function Variables() {
                 setError('Error de autenticación: Token de API inválido o sin permisos.');
             } else if (error.message?.includes('404') || error.message?.includes('bucket')) {
                 setError(`Error: El bucket "${config.bucket}" no existe o no tienes acceso.`);
-            } else if (error.message?.includes('measurement')) {
+            } else if (error.message?.includes('measurement') && config.useMeasurement) {
                 setError(`Error: No se encontraron datos en el measurement "${config.measurement}". Verifica que existan datos recientes.`);
+            } else if (error.message?.includes('No se encontraron datos en el bucket')) {
+                setError(`Error: El bucket "${config.bucket}" no contiene datos en los últimos 7 días.`);
             } else if (error.message?.includes('organization')) {
                 setError(`Error: La organización "${config.org}" no existe.`);
             } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
@@ -638,8 +756,7 @@ export default function Variables() {
         } finally {
             setIsLoading(false);
         }
-    }
-
+    };
     //MANEJAR SELECCIÓN DE VARIABLES
     const toggleVariableSelection = (id: number) => {
         setSelectedVariables(prev => {
@@ -868,6 +985,7 @@ export default function Variables() {
                                     : 'Seleccione al menos una variable para continuar'}
                             </span>
                             <button
+                                onClick={() => {handleSiguientePaso();}}
                                 disabled={selectedVariables.length === 0}
                                 className={`px-4 py-2 rounded-lg flex items-center
                                     ${selectedVariables.length === 0

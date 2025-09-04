@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUserStore } from '@/store/user.store';
 const Header = () => {
   const navigate = useNavigate();
-  const { handleLogout: logout, user } = useUserStore();
+  const { handleLogout: logout} = useUserStore();
 
   const handleLogout = () => {
     localStorage.clear();

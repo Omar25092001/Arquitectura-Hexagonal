@@ -140,7 +140,7 @@ export default function FuenteDatos() {
     }
     
     localStorage.setItem('dataSourceConfig', JSON.stringify(dataSourceInfo));
-    navigate('/variables');
+    navigate('/usuario/variables');
 };
 
     const hasSuccessfulConnection = Object.values(estadoConexion).includes('success');

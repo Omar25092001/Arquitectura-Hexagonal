@@ -15,12 +15,12 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
         token: '',
         org: '',
         bucket: '',
-        measurement: ''
+        measurement: '',
+        useMeasurement: true // Nueva opción para usar o no measurement
     });
 
     const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [connectionMessage, setConnectionMessage] = useState('');
-
 
     const probarConexionInflux = async () => {
         setConnectionState('testing');
@@ -32,8 +32,9 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
         const hasOrg = influxConfig.org.trim() !== '';
         const hasBucket = influxConfig.bucket.trim() !== '';
         const isValidUrl = influxConfig.url.startsWith('http://') || influxConfig.url.startsWith('https://');
+        const needsMeasurement = influxConfig.useMeasurement && influxConfig.measurement.trim() === '';
 
-        if (!hasUrl || !hasToken || !hasOrg || !hasBucket || !isValidUrl) {
+        if (!hasUrl || !hasToken || !hasOrg || !hasBucket || !isValidUrl || needsMeasurement) {
             setConnectionState('error');
             onConnectionStateChange?.('error');
             let errorMsg = 'Error: ';
@@ -45,6 +46,8 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
                 errorMsg += 'Se requiere especificar la organización. ';
             } else if (!hasBucket) {
                 errorMsg += 'Se requiere especificar un bucket. ';
+            } else if (needsMeasurement) {
+                errorMsg += 'Se requiere especificar un measurement cuando está habilitado. ';
             }
             setConnectionMessage(errorMsg);
             return;
@@ -59,35 +62,99 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
 
             const queryApi = client.getQueryApi(influxConfig.org);
 
-            // Consulta para verificar el measurement específico
-            const testQuery = `
-                from(bucket: "${influxConfig.bucket}")
-                |> range(start: -24h)
-                |> filter(fn: (r) => r._measurement == "${influxConfig.measurement}")
-                |> limit(n: 1)
-            `;
+            if (influxConfig.useMeasurement) {
+                // OPCIÓN 1: CON MEASUREMENT ESPECÍFICO (comportamiento actual)
+                const testQuery = `
+                    from(bucket: "${influxConfig.bucket}")
+                    |> range(start: -24h)
+                    |> filter(fn: (r) => r._measurement == "${influxConfig.measurement}")
+                    |> limit(n: 1)
+                `;
 
-            // Intentar ejecutar la consulta
-            const rows = await queryApi.collectRows(testQuery);
+                const rows = await queryApi.collectRows(testQuery);
 
-            setConnectionState('success');
-            onConnectionStateChange?.('success');
+                setConnectionState('success');
+                onConnectionStateChange?.('success');
 
-            if (rows.length > 0) {
-                setConnectionMessage(`Conexión exitosa. Measurement "${influxConfig.measurement}" encontrado en bucket "${influxConfig.bucket}" con datos existentes.`);
+                if (rows.length > 0) {
+                    setConnectionMessage(`Conexión exitosa. Measurement "${influxConfig.measurement}" encontrado en bucket "${influxConfig.bucket}" con datos existentes.`);
+                } else {
+                    setConnectionMessage(`Conexión exitosa. Bucket "${influxConfig.bucket}" accesible. Measurement "${influxConfig.measurement}" está listo para recibir datos.`);
+                }
+
+                onConfigChange?.({
+                    url: influxConfig.url,
+                    token: influxConfig.token,
+                    org: influxConfig.org,
+                    bucket: influxConfig.bucket,
+                    measurement: influxConfig.measurement,
+                    useMeasurement: true,
+                    isValid: true
+                });
+
             } else {
-                setConnectionMessage(`Conexión exitosa. Bucket "${influxConfig.bucket}" accesible. Measurement "${influxConfig.measurement}" está listo para recibir datos.`);
-            }
+                // OPCIÓN 2: SIN MEASUREMENT - LEER TODAS LAS VARIABLES DEL BUCKET
+                const discoverQuery = `
+                    from(bucket: "${influxConfig.bucket}")
+                    |> range(start: -7d)
+                    |> group(columns: ["_measurement"])
+                    |> distinct(column: "_field")
+                    |> group()
+                    |> sort()
+                `;
 
-            // ENVIAR CONFIGURACIÓN COMPLETA
-            onConfigChange?.({
-                url: influxConfig.url,
-                token: influxConfig.token,
-                org: influxConfig.org,
-                bucket: influxConfig.bucket,
-                measurement: influxConfig.measurement,
-                isValid: true
-            });
+                const rows = await queryApi.collectRows(discoverQuery);
+
+                setConnectionState('success');
+                onConnectionStateChange?.('success');
+
+                // Agrupar variables por measurement
+                const measurementMap = new Map();
+                let totalVariables = 0;
+
+                rows.forEach(row => {
+                    const { _measurement, _field } = row as { _measurement: string; _field: string };
+                    
+                    if (!_measurement || !_field) return;
+
+                    if (!measurementMap.has(_measurement)) {
+                        measurementMap.set(_measurement, []);
+                    }
+                    measurementMap.get(_measurement).push(_field);
+                    totalVariables++;
+                });
+
+                const measurements = Array.from(measurementMap.keys());
+                const measurementDetails = Array.from(measurementMap.entries()).map(([measurement, fields]) => ({
+                    measurement,
+                    fields: fields,
+                    fieldCount: fields.length
+                }));
+
+                if (totalVariables > 0) {
+                    setConnectionMessage(
+                        `Conexión exitosa. Bucket "${influxConfig.bucket}" contiene ${measurements.length} measurement(s) ` +
+                        `con un total de ${totalVariables} variables disponibles.`
+                    );
+                } else {
+                    setConnectionMessage(
+                        `Conexión exitosa. Bucket "${influxConfig.bucket}" accesible pero sin datos en los últimos 7 días.`
+                    );
+                }
+
+                onConfigChange?.({
+                    url: influxConfig.url,
+                    token: influxConfig.token,
+                    org: influxConfig.org,
+                    bucket: influxConfig.bucket,
+                    measurement: null, // No se usa measurement específico
+                    useMeasurement: false,
+                    availableMeasurements: measurements,
+                    measurementDetails: measurementDetails,
+                    totalVariables: totalVariables,
+                    isValid: true
+                });
+            }
 
         } catch (error: any) {
             setConnectionState('error');
@@ -109,13 +176,12 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
+        const { name, value, type, checked } = e.target;
         setInfluxConfig(prev => ({
             ...prev,
-            [name]: value
+            [name]: type === 'checkbox' ? checked : value
         }));
     };
-
 
     return (
         <div className="space-y-4">
@@ -188,24 +254,51 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
                         Bucket donde se almacenarán los datos de series temporales
                     </p>
                 </div>
+
+                {/* NUEVA OPCIÓN PARA USAR O NO MEASUREMENT */}
                 <div className="md:col-span-2">
-                    <label htmlFor="measurement" className="block text-sm font-medium text-white mb-1">
-                        Measurement
-                    </label>
-                    <input
-                        id="measurement"
-                        name="measurement"
-                        type="text"
-                        placeholder="sensores, datos_iot"
-                        value={influxConfig.measurement}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                        Nombre del measurement donde se almacenarán los fields. Es como el nombre de una tabla en SQL tradicional.
+                    <div className="flex items-center space-x-3 mb-3">
+                        <input
+                            id="useMeasurement"
+                            name="useMeasurement"
+                            type="checkbox"
+                            checked={influxConfig.useMeasurement}
+                            onChange={handleChange}
+                            className="w-4 h-4 text-orange-400 bg-label border-background rounded focus:ring-orange-400 focus:ring-2"
+                        />
+                        <label htmlFor="useMeasurement" className="text-sm font-medium text-white">
+                            Usar measurement específico
+                        </label>
+                    </div>
+                    <p className="text-xs text-gray-400 mb-3">
+                        <strong>Marcado:</strong> Se usará un measurement específico para filtrar datos.<br/>
+                        <strong>Desmarcado:</strong> Se leerán todas las variables disponibles en el bucket.
                     </p>
                 </div>
+
+                {/* CAMPO MEASUREMENT - SOLO SI ESTÁ HABILITADO */}
+                {influxConfig.useMeasurement && (
+                    <div className="md:col-span-2">
+                        <label htmlFor="measurement" className="block text-sm font-medium text-white mb-1">
+                            Measurement
+                        </label>
+                        <input
+                            id="measurement"
+                            name="measurement"
+                            type="text"
+                            placeholder="sensores, datos_iot"
+                            value={influxConfig.measurement}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                            Nombre del measurement específico donde buscar los datos. Es como el nombre de una tabla en SQL tradicional.
+                        </p>
+                    </div>
+                )}
             </div>
+
+        
 
             {/* Botón y estado de conexión */}
             <div className="mt-6 mb-4 flex flex-wrap items-start gap-3">
@@ -220,11 +313,10 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
                     {connectionState === 'testing' && (
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     )}
-                    Probar Conexión InfluxDB
+                    {influxConfig.useMeasurement ? 'Probar Conexión InfluxDB' : 'Explorar Variables del Bucket'}
                 </button>
 
                 <div className="flex mt-2 items-center space-x-3">
-                    {/* Círculo indicador de estado */}
                     {connectionState === 'success' && (
                         <div className="flex items-center">
                             <div className="h-4 w-4 rounded-full bg-green-500 shadow-lg"></div>
