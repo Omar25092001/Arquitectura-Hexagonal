@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import { CheckCircle, ArrowRight, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,15 @@ export default function Algoritmo() {
     const [selectedAlgorithm, setSelectedAlgorithm] = useState('');
     const [algorithmDropdownOpen, setAlgorithmDropdownOpen] = useState(false);
     const [simulationType, setSimulationType] = useState('');
+    const [dataSourceType, setDataSourceType] = useState('');
+
+    useEffect(() => {
+        const dataSourceConfig = localStorage.getItem('dataSourceConfig');
+        if (dataSourceConfig) {
+            const config = JSON.parse(dataSourceConfig);
+            setDataSourceType(config.type || '');
+        }
+    }, []);
 
     const algorithmOptions = [
         { id: 'algoritmo1', name: 'Algoritmo 1' },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import ConfigMQTT from '@/components/Configuracion/ConfigMQTT';
 import ConfigWebSocket from '@/components/Configuracion/ConfigWebSocket';
@@ -37,6 +37,8 @@ export default function FuenteDatos() {
         { id: 4, title: 'Ejecución', active: false }
     ];
 
+    
+
     // Estado para almacenar las configuraciones de cada fuente de datos
     const [configurations, setConfigurations] = useState({
         mqtt: {},
@@ -45,6 +47,7 @@ export default function FuenteDatos() {
         influx: {},
         file: {}
     });
+    
 
     const dataSourceOptions = [
         {
@@ -69,6 +72,58 @@ export default function FuenteDatos() {
             selected: selectedDataSource === 'file'
         }
     ];
+    
+    useEffect(() => {
+        console.log('FuenteDatos montado - Iniciando limpieza...');
+        
+        // Verificar si ya se hizo la limpieza en esta sesión
+        const hasReloaded = sessionStorage.getItem('fuenteDatosReloaded');
+        
+        if (!hasReloaded) {
+            console.log('Primera carga - Limpiando localStorage y recargando...');
+            
+            // Limpiar localStorage
+            const keysToRemove = [
+                'dataSourceConfig',
+                'selectedVariables', 
+                'algorithmConfig'
+            ];
+            
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+            });
+            
+            // Marcar que ya se hizo la limpieza
+            sessionStorage.setItem('fuenteDatosReloaded', 'true');
+            
+            // Recargar la página para limpiar todas las conexiones y estados
+            window.location.reload();
+            return;
+        }
+        
+        console.log('Página ya recargada - Continuando normalmente');
+        
+        // Limpiar la marca cuando el usuario navega fuera de esta página
+        const handleBeforeUnload = () => {
+            sessionStorage.removeItem('fuenteDatosReloaded');
+        };
+        
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, []);
+
+    // Limpiar la marca cuando el usuario navega a otra página usando React Router
+    useEffect(() => {
+        return () => {
+            // Solo limpiar si estamos navegando fuera, no si se está desmontando por recarga
+            if (!window.location.href.includes('/fuente-datos')) {
+                sessionStorage.removeItem('fuenteDatosReloaded');
+            }
+        };
+    }, []);
 
     const handleDataSourceChange = (newDataSource: string) => {
         // Resetear todos los estados de conexión cuando cambia la fuente

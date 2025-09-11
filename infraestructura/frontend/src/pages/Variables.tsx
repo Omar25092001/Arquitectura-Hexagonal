@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import mqtt from 'mqtt';
 import * as ExcelJS from 'exceljs';
 import { InfluxDB } from '@influxdata/influxdb-client';
+import { parsearMensaje, type ParsedData } from '../utils/parsearMensaje';
 
 export default function Variables() {
     const navigate = useNavigate();
@@ -54,120 +55,36 @@ export default function Variables() {
         }
     }, [navigate]);
 
-    //  FUNCIÓN PARA PARSEAR EL MENSAJE MQTT
-    const parsearMensaje = (mensaje: string, formato?: string) => {
+    // Función helper para convertir ParsedData a formato de variables
+    const convertirParsedDataAVariables = (parsedData: ParsedData): any[] => {
         const variables: any[] = [];
+        let id = 1;
 
-        try {
-            //  INTENTAR PARSEAR COMO JSON PRIMERO
-            if (formato === 'json' || mensaje.trim().startsWith('{') || mensaje.trim().startsWith('[')) {
-                const jsonData = JSON.parse(mensaje);
+        Object.entries(parsedData).forEach(([key, value]) => {
+            if (key === 'timestamp') return; // Saltar timestamp
 
-                // Convertir objeto JSON a variables
-                const flattenObject = (obj: any, prefix = '') => {
-                    Object.keys(obj).forEach((key) => {
-                        const value = obj[key];
-                        const fullKey = prefix ? `${prefix}.${key}` : key;
-
-                        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                            // Objeto anidado - aplanar recursivamente
-                            flattenObject(value, fullKey);
-                        } else {
-                            // Valor primitivo - crear variable
-                            let dataType: string;
-                            let valorParseado: any = value;
-
-                            if (typeof value === 'number') {
-                                dataType = Number.isInteger(value) ? 'Numérico' : 'Numérico';
-                            } else if (typeof value === 'boolean') {
-                                dataType = 'Booleano';
-                            } else if (Array.isArray(value)) {
-                                dataType = 'Array';
-                                valorParseado = JSON.stringify(value);
-                            } else {
-                                dataType = 'Texto';
-                            }
-
-                            // REMOVER EL PREFIJO "data." DEL NOMBRE
-                            let displayName = fullKey;
-                            if (displayName.startsWith('data.')) {
-                                displayName = displayName.replace('data.', '');
-                            }
-
-                            variables.push({
-                                id: variables.length + 1,
-                                name: displayName, // USAR EL NOMBRE SIN PREFIJO
-                                dataType: dataType,
-                                current: valorParseado,
-                                originalValue: String(value),
-                                fullPath: fullKey // GUARDAR LA RUTA COMPLETA POR SI LA NECESITAS
-                            });
-                        }
-                    });
-                };
-
-                if (Array.isArray(jsonData)) {
-                    // Si es un array, usar el primer elemento
-                    if (jsonData.length > 0) {
-                        flattenObject(jsonData[0]);
-                    }
-                } else {
-                    flattenObject(jsonData);
-                }
+            let dataType: string;
+            if (typeof value === 'number') {
+                dataType = Number.isInteger(value) ? 'Numérico (Entero)' : 'Numérico (Decimal)';
+            } else if (typeof value === 'boolean') {
+                dataType = 'Booleano';
+            } else if (Array.isArray(value)) {
+                dataType = 'Array';
+                value = JSON.stringify(value);
+            } else {
+                dataType = 'Texto';
             }
-            // PARSEAR COMO FORMATO MQTT (variable=valor|variable=valor)
-            else {
-                const pares = mensaje.split('|').filter(par => par.trim() !== '');
 
-                pares.forEach((par, index) => {
-                    const [nombre, valor] = par.split('=');
+            variables.push({
+                id: id++,
+                name: key,
+                dataType: dataType,
+                current: value,
+                originalValue: String(value),
+                fullPath: key
+            });
+        });
 
-                    if (nombre && valor !== undefined) {
-                        const nombreLimpio = nombre.trim();
-                        const valorLimpio = valor.trim();
-
-                        // Detectar tipo de dato
-                        let valorParseado: any;
-                        let dataType: string;
-
-                        const numeroParseado = parseFloat(valorLimpio);
-                        if (!isNaN(numeroParseado) && isFinite(numeroParseado)) {
-                            valorParseado = numeroParseado;
-                            dataType = 'Numérico';
-                        } else if (valorLimpio.toLowerCase() === 'true' || valorLimpio.toLowerCase() === 'false') {
-                            valorParseado = valorLimpio.toLowerCase() === 'true';
-                            dataType = 'Booleano';
-                        } else {
-                            valorParseado = valorLimpio;
-                            dataType = 'Texto';
-                        }
-
-                        variables.push({
-                            id: index + 1,
-                            name: nombreLimpio,
-                            dataType: dataType,
-                            current: valorParseado,
-                            originalValue: valorLimpio,
-                            fullPath: nombreLimpio // Para MQTT es igual
-                        });
-
-                        console.log(`✅ Variable ${index + 1}:`, {
-                            nombre: nombreLimpio,
-                            valor: valorParseado,
-                            tipo: dataType,
-                            original: valorLimpio
-                        });
-                    } else {
-                        console.log(`Par inválido ignorado: "${par}"`);
-                    }
-                });
-            }
-        } catch (jsonError) {
-            console.log('No es JSON válido, intentando formato MQTT...');
-            // Ya se intentó el formato MQTT arriba
-        }
-
-        console.log(`Total variables detectadas: ${variables.length}`);
         return variables;
     };
 
@@ -177,7 +94,6 @@ export default function Variables() {
 
         setIsLoading(true);
         setError(null);
-
         setSelectedVariables([]);
 
         try {
@@ -200,7 +116,7 @@ export default function Variables() {
                             client.end();
                             reject(new Error('Error suscribiéndose al tópico: ' + err.message));
                         } else {
-                            console.log('📡 Esperando mensajes en formato: variable=valor|variable=valor|...');
+                            console.log(' Esperando mensajes en formato: variable=valor|variable=valor|...');
                         }
                     });
                 });
@@ -209,12 +125,14 @@ export default function Variables() {
                     clearTimeout(timeout);
                     const mensajeRecibido = message.toString();
                     if (topic !== config.topic) {
-                        console.log(`⚠️ Mensaje de tópico diferente ignorado: ${topic} (esperado: ${config.topic})`);
+                        console.log(` Mensaje de tópico diferente ignorado: ${topic} (esperado: ${config.topic})`);
                         return;
                     }
 
                     try {
-                        const variablesDetectadas = parsearMensaje(mensajeRecibido);
+                        // Usar la función importada
+                        const parsedData = parsearMensaje(mensajeRecibido);
+                        const variablesDetectadas = convertirParsedDataAVariables(parsedData);
 
                         if (variablesDetectadas.length === 0) {
                             client.end();
@@ -278,17 +196,18 @@ export default function Variables() {
             // Determinar formato basado en Content-Type
             const formato = contentType.includes('application/json') ? 'json' : 'text';
 
-            const variablesDetectadas = parsearMensaje(responseText, formato);
+            // Usar la función importada
+            const parsedData = parsearMensaje(responseText, formato);
+            const variablesDetectadas = convertirParsedDataAVariables(parsedData);
+
             console.log(`Total variables detectadas:`, variablesDetectadas);
 
             if (variablesDetectadas.length === 0) {
                 throw new Error('No se detectaron variables válidas en la respuesta HTTP.\n\nFormatos soportados:\n• JSON: {"variable": valor}\n• Texto: variable=valor|variable=valor|...');
             }
+
             setVariables(variablesDetectadas);
             setLastFetchTime(new Date());
-            setIsLoading(true);
-            setError(null);
-
 
         } catch (error: any) {
             setError(error.message);
@@ -302,7 +221,7 @@ export default function Variables() {
 
         setIsLoading(true);
         setError(null);
-        setSelectedVariables([]); // Limpiar selección
+        setSelectedVariables([]);
 
         const config = dataSourceConfig.config;
 
@@ -315,14 +234,13 @@ export default function Variables() {
                 const ws = new WebSocket(config.url);
 
                 ws.onopen = () => {
-
                     // Enviar token si está configurado
                     if (config.useToken && config.token) {
                         ws.send(JSON.stringify({ token: config.token }));
-                        console.log('🔑 Token enviado');
+                        console.log(' Token enviado');
                     }
 
-                    console.log('🔌 Esperando mensajes WebSocket...');
+                    console.log('Esperando mensajes WebSocket...');
                 };
 
                 ws.onmessage = (event) => {
@@ -331,7 +249,9 @@ export default function Variables() {
                     console.log('MENSAJE WEBSOCKET RECIBIDO:', mensajeRecibido);
 
                     try {
-                        const variablesDetectadas = parsearMensaje(mensajeRecibido);
+                        // Usar la función importada
+                        const parsedData = parsearMensaje(mensajeRecibido);
+                        const variablesDetectadas = convertirParsedDataAVariables(parsedData);
 
                         if (variablesDetectadas.length === 0) {
                             ws.close();
@@ -391,7 +311,7 @@ export default function Variables() {
         }
     };
 
-    //  FUNCIÓN ACTUALIZADA PARA DETECTAR VARIABLES EXCEL
+    //  FUNCIÓN ACTUALIZADA PARA DETECTAR VARIABLES EXCEL Y FILTRAR "Date"
     const detectarVariablesExcel = async () => {
         if (!dataSourceConfig?.config) return;
 
@@ -406,7 +326,7 @@ export default function Variables() {
         setSelectedVariables([]);
 
         const config = dataSourceConfig.config;
-        console.log('📋 Procesando archivo Excel:', selectedFile.name);
+        console.log('Procesando archivo Excel:', selectedFile.name);
 
         try {
             const headers = await new Promise<string[]>((resolve, reject) => {
@@ -418,7 +338,7 @@ export default function Variables() {
                         const workbook = new ExcelJS.Workbook();
 
                         await workbook.xlsx.load(buffer);
-                        console.log('📚 Hojas disponibles:', workbook.worksheets.map(ws => ws.name));
+                        console.log('Hojas disponibles:', workbook.worksheets.map(ws => ws.name));
 
                         let worksheet;
                         if (config.useSheetName && config.sheetName) {
@@ -428,7 +348,7 @@ export default function Variables() {
                                 reject(new Error(`La hoja "${config.sheetName}" no existe. Hojas disponibles: ${availableSheets}`));
                                 return;
                             }
-                            console.log(`📄 Usando hoja: "${config.sheetName}"`);
+                            console.log(`Usando hoja: "${config.sheetName}"`);
                         } else {
                             const sheetIndex = parseInt(config.sheetIndex) || 0;
                             if (sheetIndex >= workbook.worksheets.length) {
@@ -436,7 +356,7 @@ export default function Variables() {
                                 return;
                             }
                             worksheet = workbook.worksheets[sheetIndex];
-                            console.log(`📄 Usando hoja índice ${sheetIndex}: "${worksheet.name}"`);
+                            console.log(`Usando hoja índice ${sheetIndex}: "${worksheet.name}"`);
                         }
 
                         if (worksheet.rowCount === 0) {
@@ -445,31 +365,67 @@ export default function Variables() {
                         }
 
                         const firstRow = worksheet.getRow(1);
-                        const headers: string[] = [];
+                        const allHeaders: string[] = [];
 
                         firstRow.eachCell((cell, colNumber) => {
                             const headerValue = cell.value ? String(cell.value).trim() : `Columna_${colNumber}`;
                             if (headerValue) {
-                                headers.push(headerValue);
+                                allHeaders.push(headerValue);
                             }
                         });
 
-                        if (headers.length === 0) {
+                        if (allHeaders.length === 0) {
                             for (let col = 1; col <= (firstRow.cellCount || 10); col++) {
                                 const cell = firstRow.getCell(col);
                                 const headerValue = cell.value ? String(cell.value).trim() : `Columna_${col}`;
-                                headers.push(headerValue);
+                                allHeaders.push(headerValue);
                             }
                         }
 
-                        console.log('📋 Cabeceras detectadas:', headers);
+                        console.log('Todas las cabeceras detectadas:', allHeaders);
 
-                        if (headers.length === 0) {
+                        if (allHeaders.length === 0) {
                             reject(new Error('No se encontraron cabeceras en la primera fila de la hoja'));
                             return;
                         }
 
-                        resolve(headers.filter(header => header.trim() !== ''));
+                        //  FILTRAR LA COLUMNA "Date" Y VARIANTES
+                        const dateColumnNames = ['date', 'fecha', 'timestamp', 'time', 'datetime'];
+                        const filteredHeaders = allHeaders.filter(header => {
+                            const lowerHeader = header.toLowerCase().trim();
+                            const isDateColumn = dateColumnNames.some(dateCol =>
+                                lowerHeader === dateCol ||
+                                lowerHeader.includes(dateCol)
+                            );
+
+                            if (isDateColumn) {
+                                console.log(`Columna de fecha filtrada: "${header}"`);
+                                return false; // Excluir columnas de fecha
+                            }
+                            return true; // Incluir columnas que no son de fecha
+                        });
+
+                        console.log('Cabeceras filtradas (sin fecha):', filteredHeaders);
+
+                        if (filteredHeaders.length === 0) {
+                            reject(new Error('No se encontraron variables después de filtrar las columnas de fecha. Verifica que el archivo tenga más columnas además de "Date".'));
+                            return;
+                        }
+
+                        // Mostrar información sobre el filtrado
+                        const dateColumnsFound = allHeaders.filter(header => {
+                            const lowerHeader = header.toLowerCase().trim();
+                            return dateColumnNames.some(dateCol =>
+                                lowerHeader === dateCol ||
+                                lowerHeader.includes(dateCol)
+                            );
+                        });
+
+                        if (dateColumnsFound.length > 0) {
+                            console.log(`Columnas de fecha encontradas y filtradas: ${dateColumnsFound.join(', ')}`);
+                        }
+
+                        resolve(filteredHeaders);
                     } catch (error: any) {
                         reject(new Error(`Error procesando Excel: ${error.message}`));
                     }
@@ -483,26 +439,26 @@ export default function Variables() {
                 id: index + 1,
                 name: header,
                 dataType: 'Texto',
-                current: `Columna ${index + 1}`,
+                current: `Variable ${index + 1}`,
                 originalValue: header,
                 fullPath: header,
                 columnIndex: index
             }));
 
-
+            console.log(`📊 ${variablesDetectadas.length} variables detectadas (excluyendo columnas de fecha)`);
 
             setVariables(variablesDetectadas);
             setLastFetchTime(new Date());
 
-
         } catch (error: any) {
-
             setError(`Error procesando Excel: ${error.message}`);
         } finally {
             setIsLoading(false);
         }
     };
 
+
+    // Detectar variables InfluxDB
     const detectarVariablesInflux = async () => {
         if (!dataSourceConfig?.config) return;
 
@@ -757,6 +713,7 @@ export default function Variables() {
             setIsLoading(false);
         }
     };
+
     //MANEJAR SELECCIÓN DE VARIABLES
     const toggleVariableSelection = (id: number) => {
         setSelectedVariables(prev => {
@@ -826,9 +783,7 @@ export default function Variables() {
                                         if (dataSourceConfig.protocol === 'http') {
                                             console.log('entra en http')
                                             detectarVariablesHTTP();
-
                                         } else if (dataSourceConfig.protocol === 'mqtt') {
-
                                             detectarVariablesMQTT();
                                         } else if (dataSourceConfig.protocol === 'websocket') {
                                             detectarVariablesWebSocket();
@@ -839,7 +794,6 @@ export default function Variables() {
                                         } else {
                                             console.error('Protocolo no soportado:', dataSourceConfig.protocol);
                                         }
-
                                     }}
                                     disabled={isLoading}
                                     className="flex items-center px-3 py-2 bg-orange-400 hover:bg-orange-500 disabled:bg-gray-600 text-white rounded-lg text-sm transition-colors"
@@ -985,7 +939,7 @@ export default function Variables() {
                                     : 'Seleccione al menos una variable para continuar'}
                             </span>
                             <button
-                                onClick={() => {handleSiguientePaso();}}
+                                onClick={() => { handleSiguientePaso(); }}
                                 disabled={selectedVariables.length === 0}
                                 className={`px-4 py-2 rounded-lg flex items-center
                                     ${selectedVariables.length === 0

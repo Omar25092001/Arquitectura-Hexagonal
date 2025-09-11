@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, HelpCircle } from 'lucide-react';
 import { InfluxDB } from '@influxdata/influxdb-client';
+import FormatoInflux from '../Formatos/FormatoInflux';
+
 
 interface ConfigInfluxProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
@@ -9,6 +11,8 @@ interface ConfigInfluxProps {
 
 const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxProps) => {
 
+    const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
+    
     // Configuración y prueba de conexión InfluxDB
     const [influxConfig, setInfluxConfig] = useState({
         url: '',
@@ -238,9 +242,20 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
                 </div>
 
                 <div>
+                    <div className="flex items-center space-x-2 mb-1">
                     <label htmlFor="bucket" className="block text-sm font-medium text-white mb-1">
                         Bucket
                     </label>
+                    <button
+                            type="button"
+                            onClick={() => setMostrarModalFormato(true)}
+                            className="ml-2 text-gray-400 hover:text-orange-400 transition-colors"
+                            title="Ver formato de datos esperado"
+                        >
+                            <HelpCircle className="w-4 h-4" />
+                        </button>
+                    </div>
+                    
                     <input
                         id="bucket"
                         name="bucket"
@@ -350,7 +365,10 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
                     </div>
                 )}
             </div>
-
+            <FormatoInflux
+                isOpen={mostrarModalFormato} 
+                onClose={() => setMostrarModalFormato(false)} 
+            />
         </div>
     );
 };

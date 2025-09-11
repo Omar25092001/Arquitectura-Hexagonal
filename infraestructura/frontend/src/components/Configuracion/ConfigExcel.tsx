@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { CheckCircle, XCircle, Loader2, FileSpreadsheet, Upload, File } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, FileSpreadsheet, Upload, File, HelpCircle } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
+import FormatoExcel from '../Formatos/FormatoExcel';
 
 interface ConfigExcelProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
@@ -22,6 +23,7 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
     const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [connectionMessage, setConnectionMessage] = useState('');
     const [availableSheets, setAvailableSheets] = useState<string[]>([]);
+    const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -178,7 +180,17 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
             {/* Selector de archivo */}
             <div className="border-2 border-dashed border-background rounded-lg p-6 flex flex-col items-center">
                 <FileSpreadsheet className="w-12 h-12 text-orange-400 mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">Selecciona un archivo Excel</h3>
+                <div className="flex items-center space-x-2 mb-2 ">
+                    <h3 className="text-lg font-medium text-white mb-2">Selecciona un archivo Excel</h3>
+                    <button
+                        type="button"
+                        onClick={() => setMostrarModalFormato(true)}
+                        className="text-gray-400 hover:text-orange-400 transition-colors"
+                        title="Ver formato de archivo esperado"
+                    >
+                        <HelpCircle className="w-6 h-6" />
+                    </button>
+                </div>
                 <p className="text-sm text-gray-400 mb-4 text-center">
                     Formatos compatibles: Excel (.xlsx, .xls)
                 </p>
@@ -332,8 +344,10 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
                     </div>
                 )}
             </div>
-
-
+            <FormatoExcel
+                isOpen={mostrarModalFormato} 
+                onClose={() => setMostrarModalFormato(false)} 
+            />
         </div>
     );
 };
