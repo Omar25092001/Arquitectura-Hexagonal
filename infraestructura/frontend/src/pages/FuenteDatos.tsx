@@ -33,8 +33,7 @@ export default function FuenteDatos() {
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
         { id: 2, title: 'Variables', active: false },
-        { id: 3, title: 'Algoritmo', active: false },
-        { id: 4, title: 'Ejecución', active: false }
+        { id: 3, title: 'Ejecución', active: false }
     ];
 
     

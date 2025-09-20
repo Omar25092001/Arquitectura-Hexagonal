@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import mqtt from 'mqtt';
-import * as ExcelJS from 'exceljs';
-import { InfluxDB } from '@influxdata/influxdb-client';
-import { parsearMensaje } from '../utils/parsearMensaje';
+import {
+    conectarMQTT,
+    conectarWebSocket,
+    conectarHTTP,
+    conectarInfluxDB,
+    leerArchivoExcel
+} from '../utils/ExtraerDatos';
 
 interface DataPoint {
     timestamp: string;
@@ -24,557 +27,103 @@ export default function Ejecucion() {
     const [mqttClient, setMqttClient] = useState<any>(null);
     const [wsClient, setWsClient] = useState<WebSocket | null>(null);
     const [httpInterval, setHttpInterval] = useState<NodeJS.Timeout | null>(null);
+    const [showDataModal, setShowDataModal] = useState(false);
+    const [selectedData, setSelectedData] = useState<DataPoint | null>(null);
+    const [intervaloTiempo, setIntervaloTiempo] = useState<number> (15);
+
+    const [rangoDireccion, setRangoDireccion] = useState<'arriba' | 'abajo' | 'actual'>('arriba');
+    const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>('');
 
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
         { id: 2, title: 'Variables', active: true },
-        { id: 3, title: 'Algoritmo', active: true },
-        { id: 4, title: 'Ejecución', active: true }
+        { id: 3, title: 'Ejecución', active: true }
     ];
 
-    // Cargar configuraciones al montar el componente
     useEffect(() => {
         const loadConfigurations = () => {
             const dataSource = localStorage.getItem('dataSourceConfig');
             const variables = localStorage.getItem('selectedVariables');
             const algorithm = localStorage.getItem('algorithmConfig');
-
+            const tiempo = Number(localStorage.getItem('intervaloMinutos'))
+            setIntervaloTiempo(tiempo);
             if (dataSource) setDataSourceConfig(JSON.parse(dataSource));
             if (variables) setVariablesConfig({ variables: JSON.parse(variables) });
             if (algorithm) setAlgorithmConfig(JSON.parse(algorithm));
         };
 
+        
         loadConfigurations();
     }, []);
-
-
-    // Conectar MQTT
-    const conectarMQTT = () => {
-        if (!dataSourceConfig?.config) return;
-
-        const config = dataSourceConfig.config;
-        console.log('Conectando a MQTT:', config);
-
-        try {
-            const client = mqtt.connect(`ws://${config.ip}`, {
-                username: config.username || undefined,
-                password: config.password || undefined,
-            });
-
-            client.on('connect', () => {
-                console.log(' MQTT Conectado');
-                setConnectionStatus('connected');
-                setConnectionError('');
-
-                client.subscribe(config.topic, (err) => {
-                    if (err) {
-                        setConnectionError('Error suscribiéndose al tópico: ' + err.message);
-                        setConnectionStatus('error');
-                    } else {
-                        console.log(`Suscrito al tópico: ${config.topic}`);
-                    }
-                });
-            });
-
-            client.on('message', (topic, message) => {
-                if (topic !== config.topic) return;
-
-                const mensajeRecibido = message.toString();
-                console.log('Mensaje MQTT recibido:', mensajeRecibido);
-
-                // Usar la función importada
-                const parsedData = parsearMensaje(mensajeRecibido);
-
-                setLiveData(prev => {
-                    const updated = [parsedData, ...prev];
-                    return updated.slice(0, 100);
-                });
-            });
-
-            client.on('error', (err) => {
-                console.error('Error MQTT:', err);
-                setConnectionError('Error de conexión MQTT: ' + err.message);
-                setConnectionStatus('error');
-            });
-
-            client.on('close', () => {
-                console.log('MQTT Desconectado');
-                if (connectionStatus === 'connected') {
-                    setConnectionStatus('disconnected');
-                }
-            });
-
-            setMqttClient(client);
-
-        } catch (error: any) {
-            setConnectionError('Error creando cliente MQTT: ' + error.message);
-            setConnectionStatus('error');
-        }
-    };
-
-    // Conectar WebSocket
-    // Conectar WebSocket
-    const conectarWebSocket = () => {
-        if (!dataSourceConfig?.config) return;
-
-        const config = dataSourceConfig.config;
-        console.log('Conectando a WebSocket:', config);
-
-        try {
-            const ws = new WebSocket(config.url);
-
-            ws.onopen = () => {
-                console.log(' WebSocket Conectado');
-                setConnectionStatus('connected');
-                setConnectionError('');
-
-                // Enviar token de autenticación si está configurado
-                if (config.useToken && config.token) {
-                    ws.send(JSON.stringify({
-                        type: 'auth',
-                        token: config.token
-                    }));
-                    console.log('Token WebSocket enviado');
-                }
-
-                // Enviar mensaje de suscripción si está configurado
-                if (config.subscriptionMessage) {
-                    try {
-                        const subscriptionMsg = JSON.parse(config.subscriptionMessage);
-                        ws.send(JSON.stringify(subscriptionMsg));
-                        console.log(' Mensaje de suscripción enviado:', subscriptionMsg);
-                    } catch (e) {
-                        // Si no es JSON válido, enviar como texto plano
-                        ws.send(config.subscriptionMessage);
-                        console.log('Mensaje de suscripción enviado (texto):', config.subscriptionMessage);
-                    }
-                }
-
-                // Configurar ping/keepalive cada 30 segundos para mantener la conexión
-                const pingInterval = setInterval(() => {
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
-                        console.log(' Ping enviado para mantener conexión');
-                    } else {
-                        clearInterval(pingInterval);
-                    }
-                }, 30000);
-
-                // Guardar referencia del interval para limpiarlo después
-                (ws as any).pingInterval = pingInterval;
-            };
-
-            ws.onmessage = (event) => {
-                const mensajeRecibido = event.data;
-                console.log('Mensaje WebSocket recibido:', mensajeRecibido);
-
-                try {
-                    // Intentar parsear como JSON primero
-                    const jsonData = JSON.parse(mensajeRecibido);
-
-                    // Ignorar mensajes de control (pong, auth confirmations, etc.)
-                    if (jsonData.type && ['pong', 'auth_success', 'ping', 'keepalive'].includes(jsonData.type)) {
-                        console.log(' Mensaje de control ignorado:', jsonData.type);
-                        return;
-                    }
-                } catch (e) {
-                    // No es JSON, continuar con el procesamiento normal
-                }
-
-                // Usar la función importada para parsear datos
-                const parsedData = parsearMensaje(mensajeRecibido);
-
-                // Verificar que tenemos datos válidos (más que solo timestamp)
-                const dataKeys = Object.keys(parsedData).filter(key => key !== 'timestamp');
-                if (dataKeys.length === 0) {
-                    console.log(' Mensaje sin datos válidos, ignorando');
-                    return;
-                }
-
-                setLiveData(prev => {
-                    const updated = [parsedData, ...prev];
-                    return updated.slice(0, 100); // Mantener últimos 100 registros
-                });
-            };
-
-            ws.onerror = (error) => {
-                console.error(' Error WebSocket:', error);
-                setConnectionError('Error de conexión WebSocket: Verifica la URL y configuración');
-                setConnectionStatus('error');
-            };
-
-            ws.onclose = (event) => {
-                console.log(' WebSocket Desconectado', {
-                    code: event.code,
-                    reason: event.reason,
-                    wasClean: event.wasClean
-                });
-
-                // Limpiar interval de ping si existe
-                if ((ws as any).pingInterval) {
-                    clearInterval((ws as any).pingInterval);
-                }
-
-                if (!event.wasClean && connectionStatus === 'connected') {
-                    const reason = event.reason || `Código: ${event.code}`;
-                    setConnectionError(`Conexión WebSocket cerrada inesperadamente: ${reason}`);
-                    setConnectionStatus('error');
-                } else if (isRunning) {
-                    // Si se desconecta mientras debería estar corriendo, intentar reconectar
-                    console.log(' Intentando reconectar WebSocket en 5 segundos...');
-                    setTimeout(() => {
-                        if (isRunning && connectionStatus !== 'connected') {
-                            console.log(' Reconectando WebSocket...');
-                            conectarWebSocket();
-                        }
-                    }, 5000);
-                } else {
-                    setConnectionStatus('disconnected');
-                }
-            };
-
-            setWsClient(ws);
-
-        } catch (error: any) {
-            console.error(' Error creando WebSocket:', error);
-            setConnectionError('Error creando WebSocket: ' + error.message);
-            setConnectionStatus('error');
-        }
-    };
-    // Conectar HTTP (polling cada 15 segundos)
-    const conectarHTTP = () => {
-        if (!dataSourceConfig?.config) return;
-
-        const config = dataSourceConfig.config;
-        console.log('Iniciando polling HTTP:', config);
-
-        const realizarRequest = async () => {
-            try {
-                const requestOptions: RequestInit = {
-                    method: config.method || 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...config.headers
-                    }
-                };
-
-                if (['POST', 'PUT', 'PATCH'].includes(config.method?.toUpperCase()) && config.body) {
-                    requestOptions.body = config.body;
-                }
-
-                const response = await fetch(config.url, requestOptions);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const contentType = response.headers.get('content-type') || '';
-                const responseText = await response.text();
-
-                console.log('Respuesta HTTP recibida:', responseText);
-
-                const formato = contentType.includes('application/json') ? 'json' : 'text';
-                // Usar la función importada
-                const parsedData = parsearMensaje(responseText, formato);
-
-                setLiveData(prev => {
-                    const updated = [parsedData, ...prev];
-                    return updated.slice(0, 100);
-                });
-
-                if (connectionStatus !== 'connected') {
-                    setConnectionStatus('connected');
-                    setConnectionError('');
-                }
-
-            } catch (error: any) {
-                console.error('Error HTTP:', error);
-                setConnectionError('Error en petición HTTP: ' + error.message);
-                setConnectionStatus('error');
-            }
-        };
-
-        // Realizar primera petición
-        realizarRequest();
-
-        // Configurar polling cada 15 segundos
-        const interval = setInterval(realizarRequest, 15000);
-        setHttpInterval(interval);
-    };
-
-   // Conectar InfluxDB
-const conectarInfluxDB = () => {
-    if (!dataSourceConfig?.config) {
-        console.error('No hay configuración de InfluxDB');
-        setConnectionError('No hay configuración de InfluxDB disponible');
-        setConnectionStatus('error');
-        return;
-    }
-
-    const config = dataSourceConfig.config;
-
-    // Obtener las variables seleccionadas y limpiar nombres (quitar .value)
-    const variablesOriginales = variablesConfig?.variables?.map((v: any) => v.name) || [];
-    const variablesSeleccionadas = variablesOriginales.map((variable: string) => {
-        return variable.endsWith('.value') ? variable.replace('.value', '') : variable;
-    });
-
-    console.log('Variables originales:', variablesOriginales);
-    console.log('Variables limpiadas para query:', variablesSeleccionadas);
-
-    if (variablesSeleccionadas.length === 0) {
-        setConnectionError('No hay variables seleccionadas para consultar');
-        setConnectionStatus('error');
-        return;
-    }
-
-    console.log('Conectando a InfluxDB:', {
-        url: config.url,
-        org: config.org,
-        bucket: config.bucket,
-        measurement: config.measurement,
-        useMeasurement: config.useMeasurement,
-        variablesSeleccionadas: variablesSeleccionadas,
-        hasToken: !!config.token
-    });
-
-    try {
-        const client = new InfluxDB({
-            url: config.url,
-            token: config.token,
-        });
-
-        const queryApi = client.getQueryApi(config.org);
-
-        const realizarQuery = async () => {
-            try {
-                let query = '';
-
-                if (config.useMeasurement && config.measurement) {
-                    // OPCIÓN 1: CON MEASUREMENT ESPECÍFICO (variables como fields)
-                    const fieldFilters = variablesSeleccionadas.map((variable: any) =>
-                        `r._field == "${variable}"`
-                    ).join(' or ');
-
-                    query = `
-                        from(bucket: "${config.bucket}")
-                        |> range(start: -7d)
-                        |> filter(fn: (r) => r._measurement == "${config.measurement}")
-                        |> filter(fn: (r) => ${fieldFilters})
-                        |> group(columns: ["_field"])
-                        |> last()
-                        |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-                    `;
-                } else {
-                    // OPCIÓN 2: SIN MEASUREMENT ESPECÍFICO (cada variable es un measurement)
-                    const measurementFilters = variablesSeleccionadas.map((variable: any) =>
-                        `r._measurement == "${variable}"`
-                    ).join(' or ');
-
-                    query = `
-                        from(bucket: "${config.bucket}")
-                        |> range(start: -7d)
-                        |> filter(fn: (r) => r["_field"] == "value")
-                        |> filter(fn: (r) => ${measurementFilters})
-                        |> group(columns: ["_measurement"])
-                        |> last()
-                    `;
-                }
-
-                console.log('Ejecutando query InfluxDB:', query);
-
-                const rows = await queryApi.collectRows(query);
-                console.log('Respuesta de InfluxDB:', rows);
-                console.log('Número de filas:', rows.length);
-
-                if (rows.length > 0) {
-                    const parsedData: any = {
-                        timestamp: new Date().toLocaleTimeString()
-                    };
-
-                    if (config.useMeasurement && config.measurement) {
-                        // CASO 1: CON MEASUREMENT - Datos pivoteados en una sola fila
-                        const latestRow = rows[0] as any;
-                        console.log('Fila pivoteada:', latestRow);
-
-                        if (latestRow._time) {
-                            parsedData.timestamp = new Date(latestRow._time).toLocaleTimeString();
-                        }
-
-                        // Mapear variables usando nombres originales
-                        variablesOriginales.forEach((variableOriginal:any, index:any) => {
-                            const variableLimpia = variablesSeleccionadas[index];
-                            if (latestRow[variableLimpia] !== undefined) {
-                                parsedData[variableOriginal] = latestRow[variableLimpia];
-                                console.log(`Variable mapeada: ${variableLimpia} → ${variableOriginal} = ${latestRow[variableLimpia]}`);
-                            }
-                        });
-
-                    } else {
-                        // CASO 2: SIN MEASUREMENT - Múltiples filas, cada una es una variable
-                        console.log('Procesando múltiples measurements:');
-
-                        rows.forEach((row: any, index: number) => {
-                            const measurement = row._measurement;
-                            const value = row._value;
-                            const timestamp = row._time;
-
-                            console.log(`Row ${index}:`, { measurement, value, timestamp });
-
-                            // Buscar variable original que corresponde a este measurement
-                            const variableOriginalIndex = variablesSeleccionadas.findIndex((v: any) => v === measurement);
-                            
-                            if (variableOriginalIndex !== -1 && value !== undefined) {
-                                const variableOriginal = variablesOriginales[variableOriginalIndex];
-                                parsedData[variableOriginal] = value;
-                                console.log(`Measurement mapeado: ${measurement} → ${variableOriginal} = ${value}`);
-                            } else {
-                                console.log(`Measurement "${measurement}" no coincide con variables seleccionadas`);
-                            }
-
-                            if (timestamp) {
-                                parsedData.timestamp = new Date(timestamp).toLocaleTimeString();
-                            }
-                        });
-                    }
-
-                    console.log('Datos parseados finales:', parsedData);
-
-                    // Verificar que tenemos datos útiles
-                    const dataKeys = Object.keys(parsedData).filter(key => key !== 'timestamp');
-                    const variablesEncontradas = dataKeys.filter(key => variablesOriginales.includes(key));
-
-                    console.log(`Variables esperadas: ${variablesOriginales.join(', ')}`);
-                    console.log(`Variables encontradas: ${variablesEncontradas.join(', ')}`);
-
-                    if (variablesEncontradas.length === 0) {
-                        console.warn('No se encontraron datos para las variables seleccionadas');
-                        setConnectionError(`No se encontraron datos para: ${variablesOriginales.join(', ')}`);
-                        return;
-                    }
-
-                    if (variablesEncontradas.length < variablesOriginales.length) {
-                        const faltantes = variablesOriginales.filter((v: any) => !variablesEncontradas.includes(v));
-                        console.warn(`Variables faltantes: ${faltantes.join(', ')}`);
-                        setConnectionError(`Variables no encontradas: ${faltantes.join(', ')}`);
-                    }
-
-                    // Agregar datos al array
-                    setLiveData(prev => {
-                        const updated = [parsedData, ...prev];
-                        return updated.slice(0, 100);
-                    });
-
-                    // Actualizar estado de conexión
-                    if (connectionStatus !== 'connected') {
-                        setConnectionStatus('connected');
-                        if (variablesEncontradas.length === variablesOriginales.length) {
-                            setConnectionError('');
-                        }
-                        console.log('InfluxDB conectado exitosamente');
-                    }
-
-                } else {
-                    console.warn('No se encontraron datos en InfluxDB');
-                    setConnectionError(`No hay datos disponibles para: ${variablesOriginales.join(', ')}`);
-                }
-
-            } catch (error: any) {
-                console.error('Error en query InfluxDB:', error);
-                
-                let errorMessage = 'Error consultando InfluxDB';
-                if (error.message?.includes('unauthorized') || error.message?.includes('401')) {
-                    errorMessage = 'Token de API inválido o sin permisos';
-                } else if (error.message?.includes('bucket') || error.message?.includes('404')) {
-                    errorMessage = `Bucket "${config.bucket}" no existe o sin acceso`;
-                } else if (error.message?.includes('organization')) {
-                    errorMessage = `Organización "${config.org}" no válida`;
-                } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
-                    errorMessage = 'No se puede conectar al servidor InfluxDB';
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                
-                setConnectionError(errorMessage);
-                setConnectionStatus('error');
-            }
-        };
-
-        // Realizar primera consulta
-        console.log('Realizando primera consulta a InfluxDB...');
-        realizarQuery();
-
-        // Configurar polling cada 10 segundos
-        const interval = setInterval(() => {
-            console.log('Consulta periódica a InfluxDB...');
-            realizarQuery();
-        }, 10000);
-        setHttpInterval(interval);
-
-    } catch (error: any) {
-        console.error('Error creando cliente InfluxDB:', error);
-        setConnectionError('Error de conexión: ' + error.message);
-        setConnectionStatus('error');
-    }
-};
-    // Leer archivo Excel
-    const leerArchivoExcel = async () => {
-        // Para Excel, simularemos la lectura de datos
-        console.log('Simulando lectura de Excel...');
-
-        const simulateExcelData = () => {
-            const parsedData: any = {
-                timestamp: new Date().toLocaleTimeString()
-            };
-
-            // Generar datos basados en las variables seleccionadas
-            if (variablesConfig?.variables) {
-                variablesConfig.variables.forEach((variable: any) => {
-                    parsedData[variable.name] = (Math.random() * 100).toFixed(2);
-                });
-            }
-
-            setLiveData(prev => {
-                const updated = [parsedData, ...prev];
-                return updated.slice(0, 100);
-            });
-        };
-
-        setConnectionStatus('connected');
-        setConnectionError('');
-
-        // Simular datos cada 5 segundos
-        simulateExcelData();
-        const interval = setInterval(simulateExcelData, 5000);
-        setHttpInterval(interval);
-    };
 
     // Manejar inicio de simulación
     const handleStartSimulation = () => {
         setIsRunning(true);
         setConnectionStatus('connecting');
         setConnectionError('');
-        setLiveData([]);
 
-        // Delay para mostrar "Conectando..."
+
         setTimeout(() => {
             const protocol = dataSourceConfig?.protocol;
-
             switch (protocol) {
                 case 'mqtt':
-                    conectarMQTT();
+                    conectarMQTT(
+                        dataSourceConfig.config,
+                        setLiveData,
+                        setConnectionStatus,
+                        setConnectionError,
+                        setMqttClient
+                    );
                     break;
                 case 'websocket':
-                    conectarWebSocket();
+                    conectarWebSocket(
+                        dataSourceConfig.config,
+                        setLiveData,
+                        setConnectionStatus,
+                        setConnectionError,
+                        setWsClient,
+                        true,
+                        () => conectarWebSocket(
+                            dataSourceConfig.config,
+                            setLiveData,
+                            setConnectionStatus,
+                            setConnectionError,
+                            setWsClient,
+                            true,
+                            () => { }
+                        )
+                    );
                     break;
                 case 'http':
-                    conectarHTTP();
+                    conectarHTTP(
+                        dataSourceConfig.config,
+                        setLiveData,
+                        setConnectionStatus,
+                        setConnectionError,
+                        setHttpInterval,
+                        intervaloTiempo
+                    );
                     break;
                 case 'influx':
-                    conectarInfluxDB();
+                    conectarInfluxDB(
+                        dataSourceConfig.config,
+                        variablesConfig,
+                        setLiveData,
+                        setConnectionStatus,
+                        setConnectionError,
+                        setHttpInterval,
+                        intervaloTiempo
+                    );
                     break;
                 case 'file':
-                    leerArchivoExcel();
+                    leerArchivoExcel(
+                        variablesConfig,
+                        setLiveData,
+                        setConnectionStatus,
+                        setConnectionError,
+                        setHttpInterval,
+                        intervaloTiempo
+                    );
                     break;
                 default:
                     setConnectionError('Protocolo no soportado: ' + protocol);
@@ -586,8 +135,6 @@ const conectarInfluxDB = () => {
     const handlePauseSimulation = () => {
         setIsRunning(false);
         setConnectionStatus('disconnected');
-
-        // Limpiar conexiones
         if (mqttClient) {
             mqttClient.end();
             setMqttClient(null);
@@ -614,6 +161,27 @@ const conectarInfluxDB = () => {
         navigate('/usuario/fuente-datos');
     };
 
+    const handleSelectData = (data: DataPoint) => {
+        setSelectedData(data);
+        setShowDataModal(true);
+    }
+
+    const handleSeleccionarRango = (direccion: 'arriba' | 'abajo' | 'actual') => {
+        if (!selectedData) return;
+        const idx = liveData.findIndex(d => d === selectedData);
+        let datosSeleccionados: DataPoint[] = [];
+        if (direccion === 'arriba') {
+            // Desde el inicio hasta el seleccionado (incluido)
+            datosSeleccionados = liveData.slice(0, idx + 1);
+        } else {
+            // Desde el seleccionado hasta el final
+            datosSeleccionados = liveData.slice(idx);
+        }
+        // Aquí puedes guardar datosSeleccionados en un estado, mostrar otro modal, etc.
+        console.log('Datos seleccionados:', datosSeleccionados);
+        alert(`Seleccionaste ${datosSeleccionados.length} registros (${direccion})`);
+    };
+
     const getConnectionIcon = () => {
         switch (connectionStatus) {
             case 'connecting':
@@ -629,7 +197,6 @@ const conectarInfluxDB = () => {
 
     const getConnectionText = () => {
         const protocol = dataSourceConfig?.protocol?.toUpperCase() || 'DESCONOCIDO';
-
         switch (connectionStatus) {
             case 'connecting':
                 return `Conectando a ${protocol}...`;
@@ -697,7 +264,7 @@ const conectarInfluxDB = () => {
                                     className="px-6 py-3 bg-orange-400 text-white hover:bg-orange-500 rounded-lg flex items-center transition-colors font-medium"
                                 >
                                     <Play className="w-5 h-5 mr-2" />
-                                    Iniciar Simulación
+                                    Extraer Datos
                                 </button>
                             ) : (
                                 <button
@@ -790,7 +357,7 @@ const conectarInfluxDB = () => {
 
                     {/* Panel de Datos en Tiempo Real */}
                     <div className="bg-secundary rounded-2xl shadow-md">
-                        <div className="p-6 border-b border-gray-700">
+                        <div className="p-6 flex gap-20 border-b border-gray-700">
                             <h2 className="text-xl font-semibold text-white flex items-center">
                                 <Activity className="w-6 h-6 mr-2 text-orange-400" />
                                 Datos en Tiempo Real
@@ -800,6 +367,12 @@ const conectarInfluxDB = () => {
                                     </span>
                                 )}
                             </h2>
+
+                            <button>
+                                <span className="ml-2 text-sm px-2 py-1 bg-green-600 bg-opacity-30 text-green-300 rounded">
+                                    Ver Monitorización
+                                </span>
+                            </button>
                         </div>
 
                         <div className="p-6">
@@ -862,7 +435,11 @@ const conectarInfluxDB = () => {
                                                 </thead>
                                                 <tbody>
                                                     {liveData.slice(0, 15).map((data, index) => (
-                                                        <tr key={index} className="border-b border-gray-700 hover:bg-background hover:bg-opacity-50">
+                                                        <tr
+                                                            key={index}
+                                                            className="border-b border-gray-700 hover:bg-secundary cursor-pointer"
+                                                            onClick={() => handleSelectData(data)}
+                                                        >
                                                             <td className="text-gray-300 p-3 text-sm">{data.timestamp}</td>
                                                             {Object.entries(data).map(([key, value]) => (
                                                                 key !== 'timestamp' && (
@@ -881,6 +458,89 @@ const conectarInfluxDB = () => {
                     </div>
                 </div>
             </div>
+            {showDataModal && selectedData && (
+                <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-50">
+                    <div className="bg-secundary rounded-2xl shadow-xl w-full max-w-md p-6">
+                        <h2 className="text-xl font-bold text-white mb-4">Detalle del Registro</h2>
+                        <div className="space-y-2 mb-4">
+                            {Object.entries(selectedData).map(([key, value]) => (
+                                <div key={key} className="flex justify-between">
+                                    <span className="text-gray-400 capitalize">{key}</span>
+                                    <span className="text-white">{String(value)}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-gray-300 mb-1">Selecciona el rango:</label>
+                            <select
+                                value={rangoDireccion}
+                                onChange={e => setRangoDireccion(e.target.value as 'arriba' | 'abajo')}
+                                className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
+                            >
+                                <option value="arriba">Desde el inicio hasta aquí (hacia arriba)</option>
+                                <option value="abajo">Desde aquí hasta el final (hacia abajo)</option>
+                                <option value="actual">Solo este dato</option>
+                            </select>
+                            {rangoDireccion === 'abajo' && (
+                                <>
+                                    <label className="text-gray-300 mb-1">Selecciona el algoritmo:</label>
+                                    <select
+                                        value={selectedAlgorithm}
+                                        onChange={e => setSelectedAlgorithm(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
+                                    >
+                                        <option value="">Selecciona un algoritmo</option>
+                                        <option value="prediccion1">Regesión Lineal</option>
+                                        <option value="prediccion2">Media Movil</option>
+                                        {/* Agrega aquí más algoritmos de predicción si tienes */}
+                                    </select>
+                                </>
+                            )}
+                            {rangoDireccion === 'arriba' && (
+                                <>
+                                    <label className="text-gray-300 mb-1">Selecciona el algoritmo:</label>
+                                    <select
+                                        value={selectedAlgorithm}
+                                        onChange={e => setSelectedAlgorithm(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
+                                    >
+                                        <option value="">Selecciona un algoritmo</option>
+                                        <option value="prediccion1">Regesión Lineal</option>
+                                        <option value="prediccion2">Media Movil</option>
+                                        {/* Agrega aquí más algoritmos de predicción si tienes */}
+                                    </select>
+                                </>
+                            )}
+                            {rangoDireccion === 'actual' && (
+                                <>
+                                    <label className="text-gray-300 mb-1">Selecciona el algoritmo:</label>
+                                    <select
+                                        value={selectedAlgorithm}
+                                        onChange={e => setSelectedAlgorithm(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
+                                    >
+                                        <option value="">Selecciona un algoritmo</option>
+                                        <option value="prediccion1">Persistencia</option>
+                                        {/* Agrega aquí más algoritmos de predicción si tienes */}
+                                    </select>
+                                </>
+                            )}
+                            <button
+                                onClick={() => handleSeleccionarRango(rangoDireccion)}
+                                className="w-full px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
+                            >
+                                Aplicar selección
+                            </button>
+                            <button
+                                onClick={() => setShowDataModal(false)}
+                                className="w-full px-4 py-2 rounded-xl bg-secundary border-2 border-background text-gray-300 hover:bg-background-transparent hover:border-background transition-colors"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
