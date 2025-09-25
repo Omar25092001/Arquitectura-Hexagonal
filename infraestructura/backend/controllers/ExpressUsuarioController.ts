@@ -31,6 +31,7 @@ export class ExpressUsuarioController {
                 id,
                 usuario.nombre,
                 usuario.correo,
+                true, // Por defecto el usuario estara activo
                 usuario.contrasena,
                 createdAt,
                 updatedAt
@@ -82,6 +83,7 @@ export class ExpressUsuarioController {
                         id: usuario.id.value,                     // ← Corregido: era "usuarios.usuario.id"
                         nombre: usuario.nombre.value,
                         correo: usuario.correo.value,
+                        estado: usuario.estado.value,
                         fechaRegistro: usuario.createdAt.value,
                         ultimoAcceso: usuario.updatedAt.value
                     }

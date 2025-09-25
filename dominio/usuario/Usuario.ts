@@ -3,6 +3,7 @@
 import { UsuarioId } from "./objetosValor/UsuarioId";
 import { Nombre } from "./objetosValor/Nombre";
 import { Correo } from "./objetosValor/Correo";
+import { Estado } from "./objetosValor/Estado";
 import { Contrasena } from "./objetosValor/Constrasena";
 import { CreatedAt } from "./objetosValor/CreatedAt";
 import { UpdatedAt } from "./objetosValor/UpdatedAt";
@@ -12,14 +13,16 @@ export class Usuario {
     id: UsuarioId;
     nombre: Nombre;
     correo: Correo;
+    estado: Estado;
     contrasena: Contrasena;
     createdAt: CreatedAt;
     updatedAt: UpdatedAt;
 
-    constructor(id: UsuarioId, nombre: Nombre, correo: Correo,contrasena:Contrasena, createdAt: CreatedAt, updatedAt: UpdatedAt) {
+    constructor(id: UsuarioId, nombre: Nombre, correo: Correo, estado:Estado ,contrasena:Contrasena, createdAt: CreatedAt, updatedAt: UpdatedAt) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
+        this.estado = estado; //Por defecto el usuario estara activo
         this.contrasena = contrasena;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -30,6 +33,7 @@ export class Usuario {
             id: this.id.value,
             nombre: this.nombre.value,
             correo: this.correo.value,
+            estado: this.estado,
             createdAt: this.createdAt.value,
             updatedAt: this.updatedAt.value
         };

@@ -4,10 +4,9 @@ export interface Usuario {
     id: number;
     nombre: string;
     email: string;
-    rol: string;
     fechaRegistro: string;
     ultimoAcceso: string;
-    estado: 'activo' | 'inactivo';
+    estado: true | false;
 }
 
 interface ListaUsuariosProps {
@@ -18,18 +17,18 @@ interface ListaUsuariosProps {
     onEliminarUsuario: (id: number) => void;
 }
 
-export default function ListaUsuarios({ 
-    usuarios, 
+export default function ListaUsuarios({
+    usuarios,
     searchTerm = '',
     onVerUsuario,
-    onCambiarEstado, 
-    onEliminarUsuario 
+    onCambiarEstado,
+    onEliminarUsuario
 }: ListaUsuariosProps) {
-    
+
     // Filtrar usuarios basado en la búsqueda
     const usuariosFiltrados = usuarios.filter(usuario => {
         if (!searchTerm) return true;
-        
+
         const matchNombre = usuario.nombre.toLowerCase().includes(searchTerm.toLowerCase());
         const matchEmail = usuario.email.toLowerCase().includes(searchTerm.toLowerCase());
         return matchNombre || matchEmail;
@@ -43,14 +42,13 @@ export default function ListaUsuarios({
                     Lista de Usuarios ({usuariosFiltrados.length})
                 </h2>
             </div>
-            
+
             <div className="overflow-x-auto">
                 <table className="w-full table-fixed">
                     <thead className="bg-background">
                         <tr className="border-b border-gray-700">
                             <th className="text-left text-gray-300 p-4 w-1/5">Nombre</th>
                             <th className="text-left text-gray-300 p-4 w-1/4">Email</th>
-                            <th className="text-left text-gray-300 p-4 w-1/6">Rol</th>
                             <th className="text-left text-gray-300 p-4 w-1/6">Registro</th>
                             <th className="text-left text-gray-300 p-4 w-1/8">Estado</th>
                             <th className="text-center text-gray-300 p-4 w-1/6">Acciones</th>
@@ -71,18 +69,14 @@ export default function ListaUsuarios({
                                     <span className="text-gray-300">{usuario.email}</span>
                                 </td>
                                 <td className="p-4">
-                                    <span className="text-gray-300 capitalize">{usuario.rol}</span>
-                                </td>
-                                <td className="p-4">
                                     <span className="text-gray-300">{usuario.fechaRegistro}</span>
                                 </td>
                                 <td className="p-4">
-                                    <span className={`px-2 py-1 rounded-full text-xs ${
-                                        usuario.estado === 'activo' 
-                                            ? 'bg-green-600 bg-opacity-30 text-green-300' 
+                                    <span className={`px-2 py-1 rounded-full text-xs ${usuario.estado === true
+                                            ? 'bg-green-600 bg-opacity-30 text-green-300'
                                             : 'bg-red-600 bg-opacity-30 text-red-300'
-                                    }`}>
-                                        {usuario.estado}
+                                        }`}>
+                                        {usuario.estado === true ? 'Activo' : 'Inactivo'}
                                     </span>
                                 </td>
                                 <td className="p-4">
@@ -98,14 +92,13 @@ export default function ListaUsuarios({
                                         )}
                                         <button
                                             onClick={() => onCambiarEstado(usuario.id)}
-                                            className={`p-2 rounded-lg transition-colors ${
-                                                usuario.estado === 'activo'
+                                            className={`p-2 rounded-lg transition-colors ${usuario.estado === true
                                                     ? 'text-red-400 hover:bg-red-400 hover:bg-opacity-20'
                                                     : 'text-green-400 hover:bg-green-400 hover:bg-opacity-20'
-                                            }`}
-                                            title={usuario.estado === 'activo' ? 'Desactivar' : 'Activar'}
+                                                }`}
+                                            title={usuario.estado === true ? 'Desactivar' : 'Activar'}
                                         >
-                                            {usuario.estado === 'activo' ? (
+                                            {usuario.estado === true ? (
                                                 <ToggleRight className="w-4 h-4" />
                                             ) : (
                                                 <ToggleLeft className="w-4 h-4" />

@@ -4,6 +4,7 @@ import { Usuario } from '../../../dominio/usuario/Usuario';
 import { UsuarioId } from '../../../dominio/usuario/objetosValor/UsuarioId';
 import { Nombre } from '../../../dominio/usuario/objetosValor/Nombre';
 import { Correo } from '../../../dominio/usuario/objetosValor/Correo';
+import { Estado } from '../../../dominio/usuario/objetosValor/Estado';
 import { Contrasena } from '../../../dominio/usuario/objetosValor/Constrasena';
 import { CreatedAt } from '../../../dominio/usuario/objetosValor/CreatedAt';
 import { UpdatedAt } from '../../../dominio/usuario/objetosValor/UpdatedAt';
@@ -26,6 +27,7 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
         nombre: usuario.nombre.value,
         correo: usuario.correo.value,
         contrasena: usuario.contrasena.value,
+        estado: true, // Asegúrate de incluir el estado
         // No es necesario especificar fechaCreacion y fechaActualizacion
         // ya que tienen valores por defecto en el esquema
       },
@@ -40,6 +42,7 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
       new UsuarioId(usuario.id),
       new Nombre(usuario.nombre),
       new Correo(usuario.correo),
+      new Estado(usuario.estado), 
       new Contrasena(usuario.contrasena),
       new CreatedAt(usuario.fechaCreacion),
       new UpdatedAt(usuario.fechaActualizacion)
@@ -57,6 +60,7 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
       new UsuarioId(usuario.id),
       new Nombre(usuario.nombre),
       new Correo(usuario.correo),
+      new Estado(usuario.estado),
       new Contrasena(usuario.contrasena),
       new CreatedAt(usuario.fechaCreacion),
       new UpdatedAt(usuario.fechaActualizacion)
@@ -74,6 +78,7 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
       new UsuarioId(usuario.id),
       new Nombre(usuario.nombre),
       new Correo(usuario.correo),
+      new Estado(usuario.estado),
       new Contrasena(usuario.contrasena),
       new CreatedAt(usuario.fechaCreacion),
       new UpdatedAt(usuario.fechaActualizacion)

@@ -21,6 +21,7 @@ model Usuario {
   id               String   @id @default(uuid())
   nombre      String
   correo      String   @unique
+  estado Boolean @default(true)
   contrasena  String
   fechaCreacion DateTime @default(now())
   fechaActualizacion DateTime @updatedAt

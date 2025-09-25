@@ -2,6 +2,7 @@ import { RepositorioUsuario } from "../../../dominio/RepositorioUsuario";
 import { Usuario } from "../../../dominio/usuario/Usuario";
 import { UsuarioId } from "../../../dominio/usuario/objetosValor/UsuarioId";
 import { Correo } from "../../../dominio/usuario/objetosValor/Correo";
+import {Estado} from "../../../dominio/usuario/objetosValor/Estado";
 import { Contrasena } from "../../../dominio/usuario/objetosValor/Constrasena";
 import { Nombre } from "../../../dominio/usuario/objetosValor/Nombre";
 import { CreatedAt } from "../../../dominio/usuario/objetosValor/CreatedAt";
@@ -15,7 +16,7 @@ export class CrearUsuario {
     ) {}
 
    //Instanciaremos un objeto de la clase Usuario y lo guardaremos en el repositorio
-   async run(id:string,nombre: string, correo: string, contrasena: string, createdAt:Date, updatedAt:Date): Promise<void> {
+   async run(id:string,nombre: string, correo: string, estado:boolean, contrasena: string, createdAt:Date, updatedAt:Date): Promise<void> {
 
         const correoObj = new Correo(correo);
         const contrasenaObj = new Contrasena(contrasena);
@@ -31,6 +32,7 @@ export class CrearUsuario {
             new UsuarioId(id),
             new Nombre(nombre),
             new Correo(correo),
+            new Estado(estado),
             new Contrasena(contrasenaHasheada),
             new CreatedAt(createdAt),
             new UpdatedAt(updatedAt)

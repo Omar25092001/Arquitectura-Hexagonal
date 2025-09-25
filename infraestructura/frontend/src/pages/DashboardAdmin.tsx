@@ -21,22 +21,21 @@ export default function DashboardAdmin() {
             setLoading(true);
             try {
                 const response = await obtenerUsuarios();
-                
+                console.log('Respuesta del backend:', response);
                 // Mapear la respuesta del backend a la estructura que espera tu componente
                 const usuariosMapeados: Usuario[] = response.data.map((item: any) => ({
                     id: item.usuario.id,
                     nombre: item.usuario.nombre,
                     email: item.usuario.correo, // ← Nota: cambio de 'correo' a 'email'
-                    rol: 'usuario', // Por defecto, ya que no viene del backend
                     fechaRegistro: item.usuario.fechaRegistro.split('T')[0], // Solo la fecha
                     ultimoAcceso: item.usuario.ultimoAcceso,
-                    estado: 'activo' // Por defecto
+                    estado: item.usuario.estado // Por defecto
                 }));
 
                 setUsuarios(usuariosMapeados);
                 setTotalUsuarios(response.total);
-                setUsuariosActivos(usuariosMapeados.filter(u => u.estado === 'activo').length);
-                setUsuariosInactivos(usuariosMapeados.filter(u => u.estado === 'inactivo').length);
+                setUsuariosActivos(usuariosMapeados.filter(u => u.estado === true).length);
+                setUsuariosInactivos(usuariosMapeados.filter(u => u.estado === false).length);
                 
             } catch (error) {
                 console.error('Error al cargar usuarios:', error);
@@ -69,7 +68,7 @@ export default function DashboardAdmin() {
 
     const handleCambiarEstado = (id: number) => {
         const usuariosActualizados = usuarios.map(u => 
-            u.id === id ? { ...u, estado: u.estado === 'activo' ? 'inactivo' : 'activo' } as Usuario : u
+            u.id === id ? { ...u, estado: u.estado === true ? false : true } as Usuario : u
         );
         setUsuarios(usuariosActualizados);
         recalcularEstadisticas(usuariosActualizados);
@@ -81,8 +80,8 @@ export default function DashboardAdmin() {
 
     const recalcularEstadisticas = (usuariosActualizados: Usuario[]) => {
         setTotalUsuarios(usuariosActualizados.length);
-        setUsuariosActivos(usuariosActualizados.filter(u => u.estado === 'activo').length);
-        setUsuariosInactivos(usuariosActualizados.filter(u => u.estado === 'inactivo').length);
+        setUsuariosActivos(usuariosActualizados.filter(u => u.estado === true).length);
+        setUsuariosInactivos(usuariosActualizados.filter(u => u.estado === false).length);
     };
 
     const handleCrearUsuario = () => {
