@@ -118,7 +118,7 @@ export default function FuenteDatos() {
     useEffect(() => {
         return () => {
             // Solo limpiar si estamos navegando fuera, no si se está desmontando por recarga
-            if (!window.location.href.includes('/fuente-datos')) {
+            if (!window.location.href.includes('usuario/fuente-datos')) {
                 sessionStorage.removeItem('fuenteDatosReloaded');
             }
         };

@@ -28,3 +28,14 @@ export async function loginUsuario(usuario: UsuarioLogin) {
         throw error;
     }
 }
+
+export async function obtenerUsuarios() {
+    try {
+        const response = await axios.get(`${API_URL}/api/usuarios/usuarios`);
+        console.log(response.data)
+        return response.data;
+    } catch (error) {
+        console.error('Error al obtener los usuarios:', error);
+        throw error;
+    }
+}

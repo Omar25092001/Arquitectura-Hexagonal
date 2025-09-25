@@ -5,6 +5,7 @@ import { EditarClima } from "../../aplicacion/editarClima/EditarClima"
 import { EliminarClima } from "../../aplicacion/eliminarClima/EliminarClima"
 import { CrearUsuario } from "../../aplicacion/CasosUsoUsuario/crearUsuario/CrearUsuario";
 import { VerificarCredenciales } from "../../aplicacion/verificarCredenciales/VerificarCredenciales";
+import {ObtenerUsuarios} from '../../aplicacion/CasosUsoUsuario/obtenerUsuarios/ObtenerUsuarios';
 import { RepositorioClimaPrisma } from "../../infraestructura/backend/adaptadores/RepositorioClimaPrismaPostgre"
 import { RepositorioUsuarioPrismaPostgre } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioPrismaPostgre"
 import { RepositorioUsuarioInflux } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioInflux"
@@ -27,6 +28,7 @@ export const ServiceContainer = {
   },
   usuario:{
     crearUsuario: new CrearUsuario(usuarioRepositorioPostgre, servicioHasheo),
-    verificarCredenciales: new VerificarCredenciales(usuarioRepositorioPostgre, servicioHasheo,Token)
+    verificarCredenciales: new VerificarCredenciales(usuarioRepositorioPostgre, servicioHasheo,Token),
+    obtenerUsuarios: new ObtenerUsuarios(usuarioRepositorioPostgre)
   }
 }

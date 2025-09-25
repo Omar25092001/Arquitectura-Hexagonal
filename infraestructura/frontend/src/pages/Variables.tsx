@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
+import SeleccionarRangoFecha from '@/utils/SeleccionarRangoFecha';
 import { CheckCircle, ArrowRight, Check, X, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ModalArchivoExcel from '../components/Variables/ModalArchivoExcel';
+import ModalProtocolos from '../components/Variables/ModalProtocolos';
 
 import {
     detectarVariablesMQTT,
@@ -20,10 +23,13 @@ export default function Variables() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [showFileModal, setShowFileModal] = useState(false);
     const [showTimeModal, setShowTimeModal] = useState(false);
     const [intervaloMinutos, setIntervaloMinutos] = useState<number>(1);
+
+    //Manejo de Excel
+    const [showDateRangeModal, setShowDateRangeModal] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     // PASOS DE NAVEGACIÓN
     const steps = [
@@ -45,7 +51,7 @@ export default function Variables() {
     };
 
     const handleTimeModalOpen = () => {
-        if(dataSourceConfig.protocol === 'mqtt' || dataSourceConfig.protocol === 'websocket'){
+        if (dataSourceConfig.protocol === 'mqtt' || dataSourceConfig.protocol === 'websocket') {
             console.log(dataSourceConfig.protocol)
             console.log("entra")
             handleSiguientePaso();
@@ -56,14 +62,14 @@ export default function Variables() {
     useEffect(() => {
         const savedConfig = localStorage.getItem('dataSourceConfig');
         if (!savedConfig) {
-            navigate('/fuente-datos');
+            navigate('/usuario/fuente-datos');
             return;
         }
 
         const config = JSON.parse(savedConfig);
         if (!['mqtt', 'http', 'websocket', 'file', 'influx'].includes(config.protocol)) {
             console.log('protocolo no soportado:', config.protocol)
-            navigate('/fuente-datos');
+            navigate('/usuario/fuente-datos');
             return;
         }
 
@@ -89,6 +95,7 @@ export default function Variables() {
             } else if (dataSourceConfig.protocol === 'file') {
                 if (!selectedFile) throw new Error('Selecciona un archivo Excel primero.');
                 variablesDetectadas = await detectarVariablesExcel(dataSourceConfig.config, selectedFile);
+                setShowDateRangeModal(true);
             } else if (dataSourceConfig.protocol === 'influx') {
                 variablesDetectadas = await detectarVariablesInflux(dataSourceConfig.config);
             }
@@ -109,6 +116,24 @@ export default function Variables() {
         }
     };
 
+    const handleDateRangeSelected = async (rangeData: any) => {
+        try {
+
+
+            // Ahora detectar variables normalmente usando los datos filtrados
+            if (dataSourceConfig && selectedFile) {
+                const variablesDetectadas = await detectarVariablesExcel(dataSourceConfig.config, selectedFile);
+
+                setVariables(variablesDetectadas);
+                setLastFetchTime(new Date());
+
+                // Guardar datos filtrados para usar en Ejecución
+                localStorage.setItem('dateRangeData', JSON.stringify(rangeData));
+            }
+        } catch (error: any) {
+            setError(`Error procesando el rango de fechas: ${error.message}`);
+        }
+    };
 
     //MANEJAR SELECCIÓN DE VARIABLES
     const toggleVariableSelection = (id: number) => {
@@ -309,132 +334,29 @@ export default function Variables() {
                         </div>
                     </div>
                 </div>
-                {showFileModal && (
-                    <div className="fixed inset-0 bg-[rgba(0,0,0,0.4)] flex items-center justify-center z-50 p-4">
-                        <div className="bg-secundary rounded-2xl shadow-xl w-full max-w-md">
-                            <div className="p-6">
-                                <h2 className="text-xl font-bold text-white mb-4">Seleccionar archivo Excel</h2>
-                                <p className="text-gray-300 text-sm mb-6">
-                                    Para continuar, necesitas seleccionar el archivo Excel que configuraste anteriormente.
-                                </p>
+                <ModalArchivoExcel
+                    isOpen={showFileModal}
+                    onClose={() => setShowFileModal(false)}
+                    selectedFile={selectedFile}
+                    error={error}
+                    onFileSelection={handleFileSelection}
+                />
 
-                                <div className="space-y-4">
-                                    <label className="block">
-                                        <div className="w-full bg-orange-400 text-white px-4 py-3 rounded-lg flex items-center justify-center cursor-pointer hover:bg-orange-500 transition-colors">
-                                            Seleccionar archivo Excel
-                                        </div>
-                                        <input
-                                            type="file"
-                                            className="hidden"
-                                            accept=".xlsx,.xls"
-                                            onChange={handleFileSelection}
-                                        />
-                                    </label>
-
-                                    {selectedFile && (
-                                        <div className="p-3 bg-background rounded-lg">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-white font-medium text-sm">{selectedFile.name}</p>
-                                                    <p className="text-gray-400 text-xs">
-                                                        {(selectedFile.size / 1024).toFixed(1)} KB
-                                                    </p>
-                                                </div>
-                                                <Check className="w-5 h-5 text-green-400" />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {error && (
-                                        <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded-lg">
-                                            <p className="text-red-300 text-sm">{error}</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex gap-3 mt-6">
-                                    <button
-                                        onClick={() => {
-                                            setShowFileModal(false);
-                                            navigate('/fuente-datos');
-                                        }}
-                                        className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                                    >
-                                        Volver
-                                    </button>
-
-                                    {selectedFile && (
-                                        <button
-                                            onClick={() => setShowFileModal(false)}
-                                            className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
-                                        >
-                                            Continuar
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {showTimeModal && (
-                    <div className="fixed inset-0 bg-[rgba(0,0,0,0.4)] flex items-center justify-center z-50 p-4">
-                        <div className="bg-secundary rounded-2xl shadow-xl w-full max-w-md">
-                            <div className="p-6">
-                                <h2 className="text-xl font-bold text-white mb-4">Ajustar tiempo de Solicitud de Datos</h2>
-                                <p className="text-gray-300 text-sm mb-6">
-                                    Para continuar, necesitas seleccionar la recurrencia en que los datos se solicitarán de la fuente de datos.
-                                </p>
-
-                                <div className="space-y-4">
-                                    <label className="block text-gray-300 mb-1">Intervalo de solicitud (minutos):</label>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={60}
-                                        value={intervaloMinutos}
-                                        onChange={e => {
-                                            const val = e.target.value;
-                                            setIntervaloMinutos(val === '' ? 0 : Number(val));
-                                        }}
-                                        className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
-                                    />
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        const minutos = intervaloMinutos.toString()
-                                        console.log("tiempo",minutos)
-                                        localStorage.setItem('intervaloMinutos', intervaloMinutos.toString());
-
-                                        handleTimeModalClose();
-                                    }}
-                                    className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
-                                >
-                                    Continuar
-                                </button>
-
-                                <div className="flex gap-3 mt-6">
-                                    <button
-                                        onClick={() => {
-                                            setShowFileModal(false);
-                                            navigate('/fuente-datos');
-                                        }}
-                                        className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                                    >
-                                        Volver
-                                    </button>
-
-                                    {selectedFile && (
-                                        <button
-                                            onClick={() => setShowFileModal(false)}
-                                            className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
-                                        >
-                                            Continuar
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <ModalProtocolos
+                    isOpen={showTimeModal}
+                    onClose={() => setShowTimeModal(false)}
+                    intervaloMinutos={intervaloMinutos}
+                    onIntervaloChange={setIntervaloMinutos}
+                    onConfirm={handleTimeModalClose}
+                />
+                {showDateRangeModal && selectedFile && dataSourceConfig && (
+                    <SeleccionarRangoFecha
+                        isOpen={showDateRangeModal}
+                        onClose={() => setShowDateRangeModal(false)}
+                        file={selectedFile}
+                        config={dataSourceConfig.config}
+                        onDateRangeSelected={handleDateRangeSelected}
+                    />
                 )}
             </div>
         </div>

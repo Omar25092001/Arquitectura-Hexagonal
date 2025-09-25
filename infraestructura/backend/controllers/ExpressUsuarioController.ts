@@ -17,12 +17,12 @@ type usuarioExpress = {
 //La clase Express estará encargada de utilizar todos los casos de usos definidos en la aplicación
 export class ExpressUsuarioController {
 
-    crearUsuario = async (req:any, res:any) => {
+    crearUsuario = async (req: any, res: any) => {
         try {
             const usuario: usuarioExpress = req.body;
-            
+
             // Generar un ID si no se proporciona
-            
+
             // Crear fechas para createdAt y updatedAt
             const createdAt = new Date();
             const updatedAt = new Date();
@@ -35,7 +35,7 @@ export class ExpressUsuarioController {
                 createdAt,
                 updatedAt
             );
-            
+
             return res.status(201).json(nuevoUsuario);
         } catch (error) {
             if (error instanceof Error) {
@@ -45,14 +45,14 @@ export class ExpressUsuarioController {
         }
     }
 
-    login = async (req:any, res:any) => {
+    login = async (req: any, res: any) => {
         try {
             const credenciales: credencialesExpress = req.body;
             const usuario = await ServiceContainer.usuario.verificarCredenciales.run(
                 credenciales.correo,
                 credenciales.contrasena
             );
-            
+
             // Si la verificación fue exitosa, devolvemos los datos del usuario
             return res.status(200).json({
                 message: "Login exitoso",
@@ -70,4 +70,31 @@ export class ExpressUsuarioController {
             return res.status(500).json({ message: "Error interno del servidor" });
         }
     }
+
+    listarUsuarios = async (req: any, res: any) => {
+        try {
+            const usuarios = await ServiceContainer.usuario.obtenerUsuarios.run();
+
+            return res.status(200).json({
+                message: "Usuarios obtenidos exitosamente",
+                data: usuarios.map(usuario => ({
+                    usuario: {                              // ← Envolver en objeto "usuario"
+                        id: usuario.id.value,                     // ← Corregido: era "usuarios.usuario.id"
+                        nombre: usuario.nombre.value,
+                        correo: usuario.correo.value,
+                        fechaRegistro: usuario.createdAt.value,
+                        ultimoAcceso: usuario.updatedAt.value
+                    }
+                })),
+                total: usuarios.length
+            });
+        } catch (error) {
+            console.error('Error al listar usuarios:', error);
+            if (error instanceof Error) {
+                return res.status(400).json({ message: error.message });
+            }
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    }
+
 }

@@ -8,6 +8,7 @@ const controller = new ExpressUsuarioController();
 
 // Definir rutas para usuarios
 router.post('/', controller.crearUsuario);
+router.get('/usuarios', controller.listarUsuarios);
 router.post('/login', controller.login);
 
 export const ExpressUsuarioRouter = router;

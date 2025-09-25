@@ -249,7 +249,8 @@ export function conectarInfluxDB(
     }
 }
 
-export function leerArchivoExcel(
+// Agregar al final de ExtraerDatos.ts:
+export function leerArchivoExcelConRango(
     variablesConfig: any,
     setLiveData: any,
     setConnectionStatus: any,
@@ -257,18 +258,57 @@ export function leerArchivoExcel(
     setHttpInterval: any,
     intervaloMinutos: number
 ) {
-    const simulateExcelData = () => {
-        const parsedData: any = { timestamp: new Date().toLocaleTimeString() };
-        if (variablesConfig?.variables) {
-            variablesConfig.variables.forEach((variable: any) => {
-                parsedData[variable.name] = (Math.random() * 100).toFixed(2);
-            });
+    // Obtener datos del rango seleccionado
+    const dateRangeData = localStorage.getItem('dateRangeData');
+    
+    if (!dateRangeData) {
+        setConnectionError('No se encontró información del rango de fechas seleccionado');
+        setConnectionStatus('error');
+        return;
+    }
+    
+    const rangeInfo = JSON.parse(dateRangeData);
+    console.log('Usando datos del rango:', rangeInfo);
+    
+    let currentIndex = 0;
+    
+    const simularLecturaSecuencial = () => {
+        if (currentIndex < rangeInfo.filteredData.length) {
+            const rowData = rangeInfo.filteredData[currentIndex];
+            
+            // Convertir los datos de la fila al formato esperado
+            const parsedData: any = {
+                timestamp: new Date(rowData[rangeInfo.dateColumn] || new Date()).toLocaleTimeString()
+            };
+            
+            // Agregar solo las variables seleccionadas
+            if (variablesConfig?.variables) {
+                variablesConfig.variables.forEach((variable: any) => {
+                    if (rowData[variable.name] !== undefined) {
+                        parsedData[variable.name] = rowData[variable.name];
+                    }
+                });
+            }
+            
+            setLiveData((prev: any) => [parsedData, ...prev]);
+            currentIndex++;
+            
+            console.log(`Procesado registro ${currentIndex}/${rangeInfo.filteredData.length}:`, parsedData);
+            
+        } else {
+            console.log('Todos los registros del rango han sido procesados');
+            // Reiniciar desde el principio si se desea loop
+            currentIndex = 0;
         }
-        setLiveData((prev: any) => [parsedData, ...prev]); 
     };
+    
     setConnectionStatus('connected');
     setConnectionError('');
-    simulateExcelData();
-    const interval: any = setInterval(simulateExcelData, intervaloMinutos * 60 * 1000);
+    
+    // Cargar primer registro
+    simularLecturaSecuencial();
+    
+    // Configurar intervalo para simular datos en tiempo real
+    const interval: any = setInterval(simularLecturaSecuencial, intervaloMinutos * 60 * 1000);
     setHttpInterval(interval);
 }

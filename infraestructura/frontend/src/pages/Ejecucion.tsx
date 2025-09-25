@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
-import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle } from 'lucide-react';
+import { ejecutarAlgoritmo } from '@/Algoritmos/Index';
+import type { AlgorithmResult } from '@/Algoritmos/types';
+import DatosEnTiempoReal, { type DataPoint } from '../components/Ejecucion/DatosEntiempoReal';
+import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
     conectarMQTT,
     conectarWebSocket,
     conectarHTTP,
     conectarInfluxDB,
-    leerArchivoExcel
+    leerArchivoExcelConRango
 } from '../utils/ExtraerDatos';
+import ModalDetalleRegistro from '@/components/Ejecucion/ModalDetalleRegistro';
+import ModalResultadosAlgoritmos from '@/components/Ejecucion/ModalResultadosAlgoritmos';
 
-interface DataPoint {
-    timestamp: string;
-    [key: string]: any;
-}
 
 export default function Ejecucion() {
     const navigate = useNavigate();
@@ -29,10 +30,15 @@ export default function Ejecucion() {
     const [httpInterval, setHttpInterval] = useState<NodeJS.Timeout | null>(null);
     const [showDataModal, setShowDataModal] = useState(false);
     const [selectedData, setSelectedData] = useState<DataPoint | null>(null);
-    const [intervaloTiempo, setIntervaloTiempo] = useState<number> (15);
+    const [intervaloTiempo, setIntervaloTiempo] = useState<number>(15);
 
     const [rangoDireccion, setRangoDireccion] = useState<'arriba' | 'abajo' | 'actual'>('arriba');
     const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>('');
+
+    const [algorithmResults, setAlgorithmResults] = useState<any[]>([]);
+    const [showResultsModal, setShowResultsModal] = useState(false);
+    const [isProcessingAlgorithm, setIsProcessingAlgorithm] = useState(false);
+
 
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
@@ -52,7 +58,7 @@ export default function Ejecucion() {
             if (algorithm) setAlgorithmConfig(JSON.parse(algorithm));
         };
 
-        
+
         loadConfigurations();
     }, []);
 
@@ -116,7 +122,7 @@ export default function Ejecucion() {
                     );
                     break;
                 case 'file':
-                    leerArchivoExcel(
+                    leerArchivoExcelConRango(
                         variablesConfig,
                         setLiveData,
                         setConnectionStatus,
@@ -166,20 +172,80 @@ export default function Ejecucion() {
         setShowDataModal(true);
     }
 
-    const handleSeleccionarRango = (direccion: 'arriba' | 'abajo' | 'actual') => {
-        if (!selectedData) return;
-        const idx = liveData.findIndex(d => d === selectedData);
-        let datosSeleccionados: DataPoint[] = [];
-        if (direccion === 'arriba') {
-            // Desde el inicio hasta el seleccionado (incluido)
-            datosSeleccionados = liveData.slice(0, idx + 1);
-        } else {
-            // Desde el seleccionado hasta el final
-            datosSeleccionados = liveData.slice(idx);
+    const handleSeleccionarRango = async (direccion: 'arriba' | 'abajo' | 'actual') => {
+        if (!selectedData || !selectedAlgorithm) {
+            alert('Por favor selecciona un algoritmo primero');
+            return;
         }
-        // Aquí puedes guardar datosSeleccionados en un estado, mostrar otro modal, etc.
-        console.log('Datos seleccionados:', datosSeleccionados);
-        alert(`Seleccionaste ${datosSeleccionados.length} registros (${direccion})`);
+
+        setIsProcessingAlgorithm(true);
+        const startTime = Date.now();
+
+        try {
+            const idx = liveData.findIndex(d => d === selectedData);
+            let datosSeleccionados: DataPoint[] = [];
+            let rangeDescription = '';
+
+            // Seleccionar datos según la dirección
+            if (direccion === 'arriba') {
+                // Desde el inicio hasta el seleccionado (incluido), invertir para orden cronológico
+                datosSeleccionados = liveData.slice(0, idx + 1).reverse();
+                rangeDescription = `Desde el inicio hasta el registro ${idx + 1} (${datosSeleccionados.length} registros)`;
+            } else if (direccion === 'abajo') {
+                // Desde el seleccionado hasta el final
+                datosSeleccionados = liveData.slice(idx);
+                rangeDescription = `Desde el registro ${idx + 1} hasta el final (${datosSeleccionados.length} registros)`;
+            } else {
+                // Solo el dato actual
+                datosSeleccionados = [selectedData];
+                rangeDescription = `Solo el registro ${idx + 1} (1 registro)`;
+            }
+
+            console.log(`🎯 Procesando ${datosSeleccionados.length} registros con algoritmo: ${selectedAlgorithm}`);
+
+            // Obtener variables disponibles (excluir timestamp)
+            const variables = Object.keys(datosSeleccionados[0] || {}).filter(key => key !== 'timestamp');
+
+            if (variables.length === 0) {
+                alert('No hay variables disponibles para procesar');
+                return;
+            }
+
+            // Ejecutar algoritmo usando la función de los archivos separados
+            const algorithmId = direccion === 'actual' && selectedAlgorithm === 'prediccion1' ? 'persistencia' : selectedAlgorithm;
+            const predictions = ejecutarAlgoritmo(algorithmId, datosSeleccionados, variables);
+
+            const executionTime = Date.now() - startTime;
+
+            // Crear resultado del algoritmo
+            const result = {
+                algorithm: algorithmId === 'prediccion1' ? 'Regresión Lineal' :
+                    algorithmId === 'prediccion2' ? 'Media Móvil' : 'Persistencia',
+                input: datosSeleccionados,
+                predictions: predictions,
+                summary: {
+                    totalRecords: datosSeleccionados.length,
+                    variables: variables,
+                    range: rangeDescription,
+                    executionTime: executionTime
+                }
+            };
+
+            // Agregar resultado a la lista (mantener últimos 5)
+            setAlgorithmResults(prev => [result, ...prev.slice(0, 4)]);
+
+            // Cerrar modal de selección y abrir modal de resultados
+            setShowDataModal(false);
+            setShowResultsModal(true);
+
+            console.log('✅ Algoritmo ejecutado exitosamente:', result);
+
+        } catch (error: any) {
+            console.error('❌ Error ejecutando algoritmo:', error);
+            alert(`Error ejecutando algoritmo: ${error.message}`);
+        } finally {
+            setIsProcessingAlgorithm(false);
+        }
     };
 
     const getConnectionIcon = () => {
@@ -356,191 +422,32 @@ export default function Ejecucion() {
                     </div>
 
                     {/* Panel de Datos en Tiempo Real */}
-                    <div className="bg-secundary rounded-2xl shadow-md">
-                        <div className="p-6 flex gap-20 border-b border-gray-700">
-                            <h2 className="text-xl font-semibold text-white flex items-center">
-                                <Activity className="w-6 h-6 mr-2 text-orange-400" />
-                                Datos en Tiempo Real
-                                {connectionStatus === 'connected' && (
-                                    <span className="ml-2 text-sm px-2 py-1 bg-green-600 bg-opacity-30 text-green-300 rounded">
-                                        En vivo
-                                    </span>
-                                )}
-                            </h2>
-
-                            <button>
-                                <span className="ml-2 text-sm px-2 py-1 bg-green-600 bg-opacity-30 text-green-300 rounded">
-                                    Ver Monitorización
-                                </span>
-                            </button>
-                        </div>
-
-                        <div className="p-6">
-                            {liveData.length === 0 ? (
-                                <div className="text-center py-16">
-                                    <Activity className="w-20 h-20 text-gray-600 mx-auto mb-4" />
-                                    <h3 className="text-xl font-medium text-white mb-2">
-                                        {connectionStatus === 'connecting' ? 'Estableciendo Conexión...' :
-                                            connectionStatus === 'connected' ? 'Esperando Datos...' :
-                                                connectionStatus === 'error' ? 'Error de Conexión' :
-                                                    'Listo para Iniciar'}
-                                    </h3>
-                                    <p className="text-gray-400">
-                                        {connectionStatus === 'connecting' ? `Conectando con ${dataSourceConfig?.protocol?.toUpperCase()}` :
-                                            connectionStatus === 'connected' ? 'La conexión está establecida, esperando datos' :
-                                                connectionStatus === 'error' ? 'Verifica la configuración de tu fuente de datos' :
-                                                    'Haz clic en "Iniciar Simulación" para comenzar'}
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    {/* Último registro */}
-                                    <div className="bg-label rounded-lg p-4">
-                                        <h4 className="text-white font-medium mb-3">Último Dato Recibido</h4>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {Object.entries(liveData[0] || {}).map(([key, value]) => (
-                                                key !== 'timestamp' && (
-                                                    <div key={key} className="text-center">
-                                                        <p className="text-gray-400 text-sm capitalize">{key}</p>
-                                                        <p className="text-white text-lg font-bold">{value}</p>
-                                                    </div>
-                                                )
-                                            ))}
-                                        </div>
-                                        <p className="text-gray-400 text-sm mt-2">
-                                            Actualizado: {liveData[0]?.timestamp}
-                                        </p>
-                                    </div>
-
-                                    {/* Tabla de historial */}
-                                    <div className="bg-label rounded-lg overflow-hidden">
-                                        <div className="p-4 border-b border-gray-600">
-                                            <h4 className="text-white font-medium">
-                                                Historial de Datos ({liveData.length} registros)
-                                            </h4>
-                                        </div>
-                                        <div className="overflow-x-auto max-h-64">
-                                            <table className="w-full">
-                                                <thead className="bg-background sticky top-0">
-                                                    <tr>
-                                                        <th className="text-left text-gray-300 p-3 text-sm">Timestamp</th>
-                                                        {Object.keys(liveData[0] || {}).map((key) => (
-                                                            key !== 'timestamp' && (
-                                                                <th key={key} className="text-left text-gray-300 p-3 text-sm capitalize">
-                                                                    {key}
-                                                                </th>
-                                                            )
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {liveData.slice(0, 15).map((data, index) => (
-                                                        <tr
-                                                            key={index}
-                                                            className="border-b border-gray-700 hover:bg-secundary cursor-pointer"
-                                                            onClick={() => handleSelectData(data)}
-                                                        >
-                                                            <td className="text-gray-300 p-3 text-sm">{data.timestamp}</td>
-                                                            {Object.entries(data).map(([key, value]) => (
-                                                                key !== 'timestamp' && (
-                                                                    <td key={key} className="text-white p-3 text-sm">{value}</td>
-                                                                )
-                                                            ))}
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <DatosEnTiempoReal
+                        connectionStatus={connectionStatus}
+                        dataSourceConfig={dataSourceConfig}
+                        liveData={liveData}
+                        onSelectData={handleSelectData}
+                    />
+                    
                 </div>
             </div>
-            {showDataModal && selectedData && (
-                <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-50">
-                    <div className="bg-secundary rounded-2xl shadow-xl w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold text-white mb-4">Detalle del Registro</h2>
-                        <div className="space-y-2 mb-4">
-                            {Object.entries(selectedData).map(([key, value]) => (
-                                <div key={key} className="flex justify-between">
-                                    <span className="text-gray-400 capitalize">{key}</span>
-                                    <span className="text-white">{String(value)}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-gray-300 mb-1">Selecciona el rango:</label>
-                            <select
-                                value={rangoDireccion}
-                                onChange={e => setRangoDireccion(e.target.value as 'arriba' | 'abajo')}
-                                className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
-                            >
-                                <option value="arriba">Desde el inicio hasta aquí (hacia arriba)</option>
-                                <option value="abajo">Desde aquí hasta el final (hacia abajo)</option>
-                                <option value="actual">Solo este dato</option>
-                            </select>
-                            {rangoDireccion === 'abajo' && (
-                                <>
-                                    <label className="text-gray-300 mb-1">Selecciona el algoritmo:</label>
-                                    <select
-                                        value={selectedAlgorithm}
-                                        onChange={e => setSelectedAlgorithm(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
-                                    >
-                                        <option value="">Selecciona un algoritmo</option>
-                                        <option value="prediccion1">Regesión Lineal</option>
-                                        <option value="prediccion2">Media Movil</option>
-                                        {/* Agrega aquí más algoritmos de predicción si tienes */}
-                                    </select>
-                                </>
-                            )}
-                            {rangoDireccion === 'arriba' && (
-                                <>
-                                    <label className="text-gray-300 mb-1">Selecciona el algoritmo:</label>
-                                    <select
-                                        value={selectedAlgorithm}
-                                        onChange={e => setSelectedAlgorithm(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
-                                    >
-                                        <option value="">Selecciona un algoritmo</option>
-                                        <option value="prediccion1">Regesión Lineal</option>
-                                        <option value="prediccion2">Media Movil</option>
-                                        {/* Agrega aquí más algoritmos de predicción si tienes */}
-                                    </select>
-                                </>
-                            )}
-                            {rangoDireccion === 'actual' && (
-                                <>
-                                    <label className="text-gray-300 mb-1">Selecciona el algoritmo:</label>
-                                    <select
-                                        value={selectedAlgorithm}
-                                        onChange={e => setSelectedAlgorithm(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
-                                    >
-                                        <option value="">Selecciona un algoritmo</option>
-                                        <option value="prediccion1">Persistencia</option>
-                                        {/* Agrega aquí más algoritmos de predicción si tienes */}
-                                    </select>
-                                </>
-                            )}
-                            <button
-                                onClick={() => handleSeleccionarRango(rangoDireccion)}
-                                className="w-full px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
-                            >
-                                Aplicar selección
-                            </button>
-                            <button
-                                onClick={() => setShowDataModal(false)}
-                                className="w-full px-4 py-2 rounded-xl bg-secundary border-2 border-background text-gray-300 hover:bg-background-transparent hover:border-background transition-colors"
-                            >
-                                Cerrar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ModalDetalleRegistro
+                isOpen={showDataModal}
+                onClose={() => setShowDataModal(false)}
+                selectedData={selectedData}
+                rangoDireccion={rangoDireccion}
+                onRangoDireccionChange={setRangoDireccion}
+                selectedAlgorithm={selectedAlgorithm}
+                onSelectedAlgorithmChange={setSelectedAlgorithm}
+                isProcessingAlgorithm={isProcessingAlgorithm}
+                onEjecutarAlgoritmo={handleSeleccionarRango}
+            />
+
+            <ModalResultadosAlgoritmos
+                isOpen={showResultsModal}
+                onClose={() => setShowResultsModal(false)}
+                algorithmResults={algorithmResults}
+            />
         </div>
     );
 }

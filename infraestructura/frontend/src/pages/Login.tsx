@@ -53,10 +53,18 @@ const Login = () => {
             };
             const response = await loginUsuario(usuario);
             if (response.message == 'Login exitoso') {
-                onLogin(response.usuario.id, response.usuario.nombre, 'usuario', response.token);
-                console.log('Login attempt with:', { email, password });
-                navigate('/usuario/fuente-datos');
+                if (response.usuario.correo == 'admin@gmail.com') {
+                    console.log('Login attempt with:', { email, password });
+                    onLogin(response.usuario.id, response.usuario.nombre, 'admin', response.token);
+                    navigate('/admin/dashboard');
+                }
+                else {
+                    onLogin(response.usuario.id, response.usuario.nombre, 'usuario', response.token);
+                    console.log('Login attempt with:', { email, password });
+                    navigate('/usuario/fuente-datos');
+                }
             }
+
             else {
                 console.error('Login failed:', response);
                 console.log('Error al iniciar sesión. Por favor, verifica tus credenciales.');
