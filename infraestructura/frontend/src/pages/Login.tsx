@@ -3,13 +3,16 @@ import { FaEyeSlash, FaEye } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
 import { loginUsuario } from '@/services/usuario.service';
 import { useUserStore } from '@/store/user.store';
-
+import PopupMensaje from '@/components/shared/PopupMensaje';
 
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [mostrarContrasena, setMostrarContrasena] = useState(false);
+    const [popupMensaje, setPopupMensaje] = useState('');
+    const [popupTipo, setPopupTipo] = useState<'error' | 'exito'>('error');
+
     const navigate = useNavigate();
 
     const handleLogout = useUserStore((state) => state.handleLogout);
@@ -56,23 +59,42 @@ const Login = () => {
                 if (response.usuario.correo == 'admin@gmail.com') {
                     console.log('Login attempt with:', { email, password });
                     onLogin(response.usuario.id, response.usuario.nombre, 'admin', response.token);
+                    setPopupTipo('exito');
+                    setPopupMensaje('Inicio de sesión exitoso.');
                     navigate('/admin/dashboard');
                 }
                 else {
-                    onLogin(response.usuario.id, response.usuario.nombre, 'usuario', response.token);
-                    console.log('Login attempt with:', { email, password });
-                    navigate('/usuario/fuente-datos');
+                    if (response.usuario.estado === false) {
+                        console.error('Login failed: Usuario inactivo');
+                        console.log('Error al iniciar sesión. Usuario inactivo.');
+                        setPopupTipo('error');
+                        setPopupMensaje('Error al iniciar sesión. Usuario inactivo.');
+                        return;
+                    }
+                    else {
+                        onLogin(response.usuario.id, response.usuario.nombre, 'usuario', response.token);
+                        console.log('Login attempt with:', { email, password });
+                        setPopupTipo('exito');
+                        setPopupMensaje('Inicio de sesión exitoso.');
+                        navigate('/usuario/fuente-datos');
+                    }
+
                 }
             }
 
             else {
                 console.error('Login failed:', response);
                 console.log('Error al iniciar sesión. Por favor, verifica tus credenciales.');
+                setPopupTipo('error');
+                setPopupMensaje('Error al iniciar sesión. Por favor, verifica tus credenciales.');
+                return;
             }
 
         } catch (error) {
             console.error('Error during login:', error);
             console.log('Error al iniciar sesión. Por favor, verifica tus credenciales.');
+            setPopupTipo('error');
+            setPopupMensaje('Error al iniciar sesión. Por favor, verifica tus credenciales.');
             return;
         }
 
@@ -142,6 +164,7 @@ const Login = () => {
                     </div>
                 </form>
             </div>
+            <PopupMensaje mensaje={popupMensaje} tipo={popupTipo} onClose={() => setPopupMensaje('')} />
         </div>
     );
 }

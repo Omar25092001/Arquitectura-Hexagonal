@@ -17,29 +17,12 @@ export default function DatosEnTiempoReal({
     connectionStatus,
     dataSourceConfig,
     liveData,
-    onSelectData,
-    onVerMonitorizacion
+    onSelectData
 }: DatosEnTiempoRealProps) {
 
     return (
         <div className="bg-secundary rounded-2xl shadow-md">
-            <div className="p-6 flex gap-20 border-b border-gray-700">
-                <h2 className="text-xl font-semibold text-white flex items-center">
-                    <Activity className="w-6 h-6 mr-2 text-orange-400" />
-                    Datos en Tiempo Real
-                    {connectionStatus === 'connected' && (
-                        <span className="ml-2 text-sm px-2 py-1 bg-green-600 bg-opacity-30 text-green-300 rounded">
-                            En vivo
-                        </span>
-                    )}
-                </h2>
-
-                <button onClick={onVerMonitorizacion}>
-                    <span className="ml-2 text-sm px-2 py-1 bg-green-600 bg-opacity-30 text-green-300 rounded">
-                        Ver Monitorización
-                    </span>
-                </button>
-            </div>
+            
 
             <div className="p-6">
                 {liveData.length === 0 ? (

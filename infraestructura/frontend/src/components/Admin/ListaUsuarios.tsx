@@ -1,4 +1,4 @@
-import { Users, Eye, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
+import { Users, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
 
 export interface Usuario {
     id: number;
@@ -14,7 +14,6 @@ interface ListaUsuariosProps {
     searchTerm?: string;
     onVerUsuario?: (usuario: Usuario) => void;
     onCambiarEstado: (id: number) => void;
-    onEliminarUsuario: (id: number) => void;
 }
 
 export default function ListaUsuarios({
@@ -22,18 +21,17 @@ export default function ListaUsuarios({
     searchTerm = '',
     onVerUsuario,
     onCambiarEstado,
-    onEliminarUsuario
 }: ListaUsuariosProps) {
 
     // Filtrar usuarios basado en la búsqueda
-    const usuariosFiltrados = usuarios.filter(usuario => {
-        if (!searchTerm) return true;
-
-        const matchNombre = usuario.nombre.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchEmail = usuario.email.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchNombre || matchEmail;
-    });
-
+    const usuariosFiltrados = usuarios
+        .filter(usuario => usuario.email !== 'admin@gmail.com') // <-- oculta el admin
+        .filter(usuario => {
+            if (!searchTerm) return true;
+            const matchNombre = usuario.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchEmail = usuario.email.toLowerCase().includes(searchTerm.toLowerCase());
+            return matchNombre || matchEmail;
+        });
     return (
         <div className="bg-secundary rounded-xl">
             <div className="p-6 border-b border-gray-700">
@@ -73,8 +71,8 @@ export default function ListaUsuarios({
                                 </td>
                                 <td className="p-4">
                                     <span className={`px-2 py-1 rounded-full text-xs ${usuario.estado === true
-                                            ? 'bg-green-600 bg-opacity-30 text-green-300'
-                                            : 'bg-red-600 bg-opacity-30 text-red-300'
+                                        ? 'bg-green-600 bg-opacity-30 text-green-300'
+                                        : 'bg-red-600 bg-opacity-30 text-red-300'
                                         }`}>
                                         {usuario.estado === true ? 'Activo' : 'Inactivo'}
                                     </span>
@@ -93,8 +91,8 @@ export default function ListaUsuarios({
                                         <button
                                             onClick={() => onCambiarEstado(usuario.id)}
                                             className={`p-2 rounded-lg transition-colors ${usuario.estado === true
-                                                    ? 'text-red-400 hover:bg-red-400 hover:bg-opacity-20'
-                                                    : 'text-green-400 hover:bg-green-400 hover:bg-opacity-20'
+                                                ? 'text-red-400 hover:bg-red-400 hover:bg-opacity-20 hover:text-white'
+                                                : 'text-green-400 hover:bg-green-400 hover:bg-opacity-20 hover:text-white'
                                                 }`}
                                             title={usuario.estado === true ? 'Desactivar' : 'Activar'}
                                         >
@@ -103,13 +101,6 @@ export default function ListaUsuarios({
                                             ) : (
                                                 <ToggleLeft className="w-4 h-4" />
                                             )}
-                                        </button>
-                                        <button
-                                            onClick={() => onEliminarUsuario(usuario.id)}
-                                            className="p-2 text-red-400 hover:bg-red-400 hover:bg-opacity-20 rounded-lg transition-colors"
-                                            title="Eliminar usuario"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
                                 </td>

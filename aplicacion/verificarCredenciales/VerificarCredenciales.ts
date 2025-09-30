@@ -11,6 +11,7 @@ export interface RespuestaVerificarCredenciales {
         id: string;
         nombre: string;
         correo: string;
+        estado: boolean
         token: string;
     };
     
@@ -27,7 +28,6 @@ export class VerificarCredenciales {
         try {
             // Crear objetos de valor a partir de los strings
             const correo = new Correo(correoStr);
-            const contrasena = new Contrasena(contrasenaStr);
             
             // Verificar credenciales en una sola llamada
             const usuario = await this.repositorioUsuario.obtenerUsuarioPorCorreo(correo);
@@ -48,6 +48,7 @@ export class VerificarCredenciales {
                     id: usuario.id.value,
                     nombre: usuario.nombre.value,
                     correo: usuario.correo.value,
+                    estado: usuario.estado.value,
                     token: tokenGenerado
                 },
                 

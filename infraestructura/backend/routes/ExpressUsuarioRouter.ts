@@ -10,5 +10,7 @@ const controller = new ExpressUsuarioController();
 router.post('/', controller.crearUsuario);
 router.get('/usuarios', controller.listarUsuarios);
 router.post('/login', controller.login);
+router.put('/:id', controller.editarUsuario);
+router.patch('/estado/:id', controller.editarEstadoUsuario);
 
 export const ExpressUsuarioRouter = router;

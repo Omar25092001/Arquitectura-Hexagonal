@@ -39,3 +39,25 @@ export async function obtenerUsuarios() {
         throw error;
     }
 }
+
+export async function crearUsuario(usuario: { nombre: string; correo: string; contrasena: string }) {
+    try {
+        const response = await axios.post(`${API_URL}/api/usuarios/`, usuario);
+        console.log(response.data)
+        return response.data;
+    } catch (error) {
+        console.error('Error al crear el usuario:', error);
+        throw error;
+    } 
+}
+
+export async function editarEstadoUsuario(id: string, estado: boolean){
+    try {
+        const response = await axios.patch(`${API_URL}/api/usuarios/estado/${id}`, { estado });
+        console.log(response.data)
+        return response.data;
+    } catch (error) {
+        console.error('Error al editar el estado del usuario:', error);
+        throw error;
+    }
+}

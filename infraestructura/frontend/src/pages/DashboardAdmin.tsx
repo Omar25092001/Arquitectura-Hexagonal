@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Users, UserMinus, Activity, Search, UserPlus } from 'lucide-react';
 import Header from '../components/Admin/Header';
 import ListaUsuarios, { Usuario } from '../components/Admin/ListaUsuarios';
-import { obtenerUsuarios } from '../services/usuario.service'; // ← Importar el servicio
+import ModalCrearUsuario from '../components/Admin/ModalCrearUsuario';
+import { obtenerUsuarios, editarEstadoUsuario } from '../services/usuario.service'; // ← Importar el servicio
 
 export default function DashboardAdmin() {
     const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -10,72 +11,62 @@ export default function DashboardAdmin() {
     const [usuariosActivos, setUsuariosActivos] = useState(0);
     const [usuariosInactivos, setUsuariosInactivos] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
-    const [showUserModal, setShowUserModal] = useState(false);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [showCreateUserModal, setShowCreateUserModal] = useState(false);
 
+
+    const cargarUsuarios = async () => {
+        setLoading(true);
+        try {
+            const response = await obtenerUsuarios();
+            console.log('Respuesta del backend:', response);
+            // Mapear la respuesta del backend a la estructura que espera tu componente
+            const usuariosMapeados: Usuario[] = response.data.map((item: any) => ({
+                id: item.usuario.id,
+                nombre: item.usuario.nombre,
+                email: item.usuario.correo, // ← Nota: cambio de 'correo' a 'email'
+                fechaRegistro: item.usuario.fechaRegistro.split('T')[0], // Solo la fecha
+                ultimoAcceso: item.usuario.ultimoAcceso,
+                estado: item.usuario.estado // Por defecto
+            }));
+
+            setUsuarios(usuariosMapeados);
+            setTotalUsuarios(response.total);
+            setUsuariosActivos(usuariosMapeados.filter(u => u.estado === true).length);
+            setUsuariosInactivos(usuariosMapeados.filter(u => u.estado === false).length);
+
+        } catch (error) {
+            console.error('Error al cargar usuarios:', error);
+            // Mantener usuarios vacíos en caso de error
+            setUsuarios([]);
+            setTotalUsuarios(0);
+            setUsuariosActivos(0);
+            setUsuariosInactivos(0);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Cargar usuarios desde el backend
     useEffect(() => {
-        const cargarUsuarios = async () => {
-            setLoading(true);
-            try {
-                const response = await obtenerUsuarios();
-                console.log('Respuesta del backend:', response);
-                // Mapear la respuesta del backend a la estructura que espera tu componente
-                const usuariosMapeados: Usuario[] = response.data.map((item: any) => ({
-                    id: item.usuario.id,
-                    nombre: item.usuario.nombre,
-                    email: item.usuario.correo, // ← Nota: cambio de 'correo' a 'email'
-                    fechaRegistro: item.usuario.fechaRegistro.split('T')[0], // Solo la fecha
-                    ultimoAcceso: item.usuario.ultimoAcceso,
-                    estado: item.usuario.estado // Por defecto
-                }));
-
-                setUsuarios(usuariosMapeados);
-                setTotalUsuarios(response.total);
-                setUsuariosActivos(usuariosMapeados.filter(u => u.estado === true).length);
-                setUsuariosInactivos(usuariosMapeados.filter(u => u.estado === false).length);
-                
-            } catch (error) {
-                console.error('Error al cargar usuarios:', error);
-                // Mantener usuarios vacíos en caso de error
-                setUsuarios([]);
-                setTotalUsuarios(0);
-                setUsuariosActivos(0);
-                setUsuariosInactivos(0);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         cargarUsuarios();
     }, []);
 
-    // Resto de funciones existentes...
-    const handleVerUsuario = (usuario: Usuario) => {
-        setSelectedUser(usuario);
-        setShowUserModal(true);
-    };
 
-    const handleEliminarUsuario = (id: number) => {
-        if (window.confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
-            const usuariosActualizados = usuarios.filter(u => u.id !== id);
-            setUsuarios(usuariosActualizados);
-            recalcularEstadisticas(usuariosActualizados);
-        }
-    };
 
-    const handleCambiarEstado = (id: number) => {
+    const handleCambiarEstado = async (id: number) => {
+       try {
+        await editarEstadoUsuario(id.toString(), !usuarios.find(u => u.id === id)?.estado);
         const usuariosActualizados = usuarios.map(u => 
-            u.id === id ? { ...u, estado: u.estado === true ? false : true } as Usuario : u
+            u.id === id ? { ...u, estado: !u.estado } : u
         );
         setUsuarios(usuariosActualizados);
         recalcularEstadisticas(usuariosActualizados);
-        
-        if (selectedUser && selectedUser.id === id) {
-            setSelectedUser(usuariosActualizados.find(u => u.id === id) || null);
-        }
+        cargarUsuarios();
+       } catch (error) {
+        console.error('Error al cambiar el estado del usuario:', error);
+       }
     };
 
     const recalcularEstadisticas = (usuariosActualizados: Usuario[]) => {
@@ -86,6 +77,7 @@ export default function DashboardAdmin() {
 
     const handleCrearUsuario = () => {
         setShowCreateUserModal(true);
+        cargarUsuarios();
     };
 
     if (loading) {
@@ -105,7 +97,7 @@ export default function DashboardAdmin() {
     return (
         <div className="bg-background min-h-screen flex flex-col">
             <Header />
-            
+
             <div className="flex-grow p-6">
                 {/* Header del Dashboard */}
                 <div className="mb-8">
@@ -121,7 +113,7 @@ export default function DashboardAdmin() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-400 text-sm">Total Usuarios</p>
-                                <p className="text-2xl font-bold text-white">{totalUsuarios}</p>
+                                <p className="text-2xl font-bold text-white">{totalUsuarios-1}</p> {/* Resta 1 para no contar al admin */}
                             </div>
                             <div className="bg-blue-500/20 p-3 rounded-lg">
                                 <Users className="w-6 h-6 text-blue-400" />
@@ -194,11 +186,15 @@ export default function DashboardAdmin() {
                     usuarios={usuarios}
                     searchTerm={searchTerm}
                     onCambiarEstado={handleCambiarEstado}
-                    onEliminarUsuario={handleEliminarUsuario}
                 />
+
             </div>
 
-           
+            <ModalCrearUsuario
+                isOpen={showCreateUserModal}
+                onClose={() => setShowCreateUserModal(false)}
+                onCrearUsuario={handleCrearUsuario}
+            />
         </div>
     );
 }

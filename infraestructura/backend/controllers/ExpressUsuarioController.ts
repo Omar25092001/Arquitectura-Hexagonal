@@ -11,6 +11,7 @@ type usuarioExpress = {
     id?: string;
     nombre: string;
     correo: string;
+    estado?: boolean;
     contrasena: string;
 };
 
@@ -61,6 +62,7 @@ export class ExpressUsuarioController {
                     id: usuario.usuario.id,
                     nombre: usuario.usuario.nombre,
                     correo: usuario.usuario.correo,
+                    estado : usuario.usuario.estado,
                     token: usuario.usuario.token
                 },
             });
@@ -99,4 +101,45 @@ export class ExpressUsuarioController {
         }
     }
 
+    editarUsuario = async (req: any, res: any) => {
+        try {
+            const { id } = req.params;
+            const { nombre, correo, estado, contrasena } = req.body;
+            const updatedAt = new Date();
+            await ServiceContainer.usuario.editarUsuario.run(
+                id,
+                nombre,
+                correo,
+                estado,
+                contrasena,
+                updatedAt
+            );
+            return res.status(200).json({ message: "Usuario actualizado exitosamente" });
+        } catch (error) {
+            if (error instanceof Error) {
+                return res.status(400).json({ message: error.message });
+            }
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    }
+
+    editarEstadoUsuario = async (req: any, res: any) => {
+        try {
+            const { id } = req.params;
+            const { estado } = req.body;
+            const updatedAt = new Date();
+            await ServiceContainer.usuario.editarEstadoUsuario.run(
+                id,
+                estado,
+                updatedAt
+            );
+            return res.status(200).json({ message: "Estado del usuario actualizado exitosamente" });
+        } catch (error) {
+            if (error instanceof Error) {
+                return res.status(400).json({ message: error.message });
+            }
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }  
+    }
 }
+

@@ -6,6 +6,8 @@ import { EliminarClima } from "../../aplicacion/eliminarClima/EliminarClima"
 import { CrearUsuario } from "../../aplicacion/CasosUsoUsuario/crearUsuario/CrearUsuario";
 import { VerificarCredenciales } from "../../aplicacion/verificarCredenciales/VerificarCredenciales";
 import {ObtenerUsuarios} from '../../aplicacion/CasosUsoUsuario/obtenerUsuarios/ObtenerUsuarios';
+import {EditarUsuario} from '../../aplicacion/CasosUsoUsuario/editarUsuario/EditarUsuario';
+import {EditarEstadoUsuario} from '../../aplicacion/CasosUsoUsuario/editarEstadoUsuario/EditarEstadoUsuario';
 import { RepositorioClimaPrisma } from "../../infraestructura/backend/adaptadores/RepositorioClimaPrismaPostgre"
 import { RepositorioUsuarioPrismaPostgre } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioPrismaPostgre"
 import { RepositorioUsuarioInflux } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioInflux"
@@ -29,6 +31,8 @@ export const ServiceContainer = {
   usuario:{
     crearUsuario: new CrearUsuario(usuarioRepositorioPostgre, servicioHasheo),
     verificarCredenciales: new VerificarCredenciales(usuarioRepositorioPostgre, servicioHasheo,Token),
-    obtenerUsuarios: new ObtenerUsuarios(usuarioRepositorioPostgre)
+    obtenerUsuarios: new ObtenerUsuarios(usuarioRepositorioPostgre),
+    editarUsuario: new EditarUsuario(usuarioRepositorioPostgre, servicioHasheo),
+    editarEstadoUsuario: new EditarEstadoUsuario(usuarioRepositorioPostgre)
   }
 }

@@ -85,12 +85,23 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
     );
   }
 
+  async editarEstadoUsuario(id: UsuarioId, estado: Estado, updatedAt: UpdatedAt): Promise<void> {
+    await this.prisma.usuario.update({
+      where: { id: id.value },
+      data: {
+        estado: estado.value,
+        fechaActualizacion: updatedAt.value
+      },
+    });
+  }
+
   async editarUsuario(usuario: Usuario): Promise<void> {
     await this.prisma.usuario.update({
       where: { id: usuario.id.value },
       data: {
         nombre: usuario.nombre.value,
         correo: usuario.correo.value,
+        estado: usuario.estado.value,
         contrasena: usuario.contrasena.value,
         // fechaActualizacion se actualiza automáticamente
       },

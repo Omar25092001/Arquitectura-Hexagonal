@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { ejecutarAlgoritmo } from '@/Algoritmos/Index';
-import type { AlgorithmResult } from '@/Algoritmos/types';
+import MonitorizacionVariables from '@/components/Ejecucion/MonitorizacionVariables'
 import DatosEnTiempoReal, { type DataPoint } from '../components/Ejecucion/DatosEntiempoReal';
-import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, TrendingUp } from 'lucide-react';
+import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, BarChart, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
     conectarMQTT,
@@ -39,6 +39,9 @@ export default function Ejecucion() {
     const [showResultsModal, setShowResultsModal] = useState(false);
     const [isProcessingAlgorithm, setIsProcessingAlgorithm] = useState(false);
 
+
+    const [modoMonitorizacion, setModoMonitorizacion] = useState(false);
+    const [asignacionesMonitor, setAsignacionesMonitor] = useState<Record<string, string>>({});
 
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
@@ -420,15 +423,44 @@ export default function Ejecucion() {
                             </div>
                         </div>
                     </div>
+                    <div className="p-6 flex gap-20 border-b border-gray-700">
+                        <h2 className="text-xl font-semibold text-white flex items-center">
+                            <Activity className="w-6 h-6 mr-2 text-orange-400" />
+                            Datos en Tiempo Real
+                            {connectionStatus === 'connected' && (
+                                <span className="ml-2 text-sm px-2 py-1 bg-green-600 bg-opacity-30 text-green-300 rounded">
+                                    En vivo
+                                </span>
+                            )}
+                        </h2>
 
+                        <button
+                            onClick={() => setModoMonitorizacion(true)}
+                            className="px-4 py-2 bg-green-500 text-white rounded-lg ml-4 flex items-center gap-2"
+                        >
+                            <Sun className="w-5 h-5" />
+                            Activar Monitorización
+                        </button>
+                    </div>
                     {/* Panel de Datos en Tiempo Real */}
-                    <DatosEnTiempoReal
-                        connectionStatus={connectionStatus}
-                        dataSourceConfig={dataSourceConfig}
-                        liveData={liveData}
-                        onSelectData={handleSelectData}
-                    />
-                    
+                    {modoMonitorizacion ? (
+                        <MonitorizacionVariables
+                            variablesRecibidas={variablesConfig?.variables || []}
+                            onAsignar={asignaciones => {
+                                setAsignacionesMonitor(asignaciones);
+                                setModoMonitorizacion(false); // Oculta el panel tras confirmar
+                                // Aquí puedes guardar las asignaciones en el backend o en el estado global
+                            }}
+                        />
+                    ) : (
+                        <DatosEnTiempoReal
+                            connectionStatus={connectionStatus}
+                            dataSourceConfig={dataSourceConfig}
+                            liveData={liveData}
+                            onSelectData={handleSelectData}
+                        />
+                    )}
+
                 </div>
             </div>
             <ModalDetalleRegistro
