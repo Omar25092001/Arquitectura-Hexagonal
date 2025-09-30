@@ -3,7 +3,7 @@ import Header from '../components/Header';
 import { ejecutarAlgoritmo } from '@/Algoritmos/Index';
 import MonitorizacionVariables from '@/components/Ejecucion/MonitorizacionVariables'
 import DatosEnTiempoReal, { type DataPoint } from '../components/Ejecucion/DatosEntiempoReal';
-import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, BarChart, Sun } from 'lucide-react';
+import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
     conectarMQTT,
@@ -22,7 +22,6 @@ export default function Ejecucion() {
     const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
     const [dataSourceConfig, setDataSourceConfig] = useState<any>(null);
     const [variablesConfig, setVariablesConfig] = useState<any>(null);
-    const [algorithmConfig, setAlgorithmConfig] = useState<any>(null);
     const [liveData, setLiveData] = useState<DataPoint[]>([]);
     const [connectionError, setConnectionError] = useState<string>('');
     const [mqttClient, setMqttClient] = useState<any>(null);
@@ -41,7 +40,6 @@ export default function Ejecucion() {
 
 
     const [modoMonitorizacion, setModoMonitorizacion] = useState(false);
-    const [asignacionesMonitor, setAsignacionesMonitor] = useState<Record<string, string>>({});
 
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
@@ -53,12 +51,10 @@ export default function Ejecucion() {
         const loadConfigurations = () => {
             const dataSource = localStorage.getItem('dataSourceConfig');
             const variables = localStorage.getItem('selectedVariables');
-            const algorithm = localStorage.getItem('algorithmConfig');
             const tiempo = Number(localStorage.getItem('intervaloMinutos'))
             setIntervaloTiempo(tiempo);
             if (dataSource) setDataSourceConfig(JSON.parse(dataSource));
             if (variables) setVariablesConfig({ variables: JSON.parse(variables) });
-            if (algorithm) setAlgorithmConfig(JSON.parse(algorithm));
         };
 
 
@@ -204,8 +200,6 @@ export default function Ejecucion() {
                 rangeDescription = `Solo el registro ${idx + 1} (1 registro)`;
             }
 
-            console.log(`🎯 Procesando ${datosSeleccionados.length} registros con algoritmo: ${selectedAlgorithm}`);
-
             // Obtener variables disponibles (excluir timestamp)
             const variables = Object.keys(datosSeleccionados[0] || {}).filter(key => key !== 'timestamp');
 
@@ -241,10 +235,10 @@ export default function Ejecucion() {
             setShowDataModal(false);
             setShowResultsModal(true);
 
-            console.log('✅ Algoritmo ejecutado exitosamente:', result);
+            console.log('Algoritmo ejecutado exitosamente:', result);
 
         } catch (error: any) {
-            console.error('❌ Error ejecutando algoritmo:', error);
+            console.error(' Error ejecutando algoritmo:', error);
             alert(`Error ejecutando algoritmo: ${error.message}`);
         } finally {
             setIsProcessingAlgorithm(false);
@@ -276,6 +270,12 @@ export default function Ejecucion() {
             default:
                 return 'Desconectado';
         }
+    };
+
+    const handleAsignacionesMonitor = (asignaciones: Record<string, string>) => {
+        console.log('Asignaciones guardadas:', asignaciones);
+        // Aquí podrías guardar en localStorage o enviar al backend
+        localStorage.setItem('asignacionesMonitor', JSON.stringify(asignaciones));
     };
 
     return (
@@ -413,44 +413,62 @@ export default function Ejecucion() {
                             </div>
                         </div>
 
-                        {/* Algoritmo */}
+                        {/* Estado del Sistema */}
                         <div className="bg-secundary rounded-lg p-6">
-                            <h3 className="text-lg font-semibold text-white mb-3">Algoritmo</h3>
+                            <h3 className="text-lg font-semibold text-white mb-3">Estado del Sistema</h3>
                             <div className="text-gray-300 space-y-1">
-                                <p><strong>Seleccionado:</strong> {algorithmConfig?.algorithm || 'No configurado'}</p>
-                                <p><strong>Tipo:</strong> {algorithmConfig?.simulationType || 'No especificado'}</p>
-                                <p><strong>Estado:</strong> {isRunning ? 'Procesando' : 'Configurado'}</p>
+                                <p><strong>Conexión:</strong> {
+                                    connectionStatus === 'connected' ? '🟢 Conectado' :
+                                        connectionStatus === 'connecting' ? '🟡 Conectando...' :
+                                            connectionStatus === 'error' ? '🔴 Error' :
+                                                '⚪ Desconectado'
+                                }</p>
+                                <p><strong>Monitorización:</strong> {modoMonitorizacion ? '🔍 Activa' : '📊 Datos en bruto'}</p>
+                                <p><strong>Datos almacenados:</strong> {liveData.length} registros</p>
                             </div>
                         </div>
                     </div>
-                    <div className="p-6 flex gap-20 border-b border-gray-700">
-                        <h2 className="text-xl font-semibold text-white flex items-center">
-                            <Activity className="w-6 h-6 mr-2 text-orange-400" />
-                            Datos en Tiempo Real
-                            {connectionStatus === 'connected' && (
-                                <span className="ml-2 text-sm px-2 py-1 bg-green-600 bg-opacity-30 text-green-300 rounded">
+                    <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-700">
+                        <h2 className="text-lg sm:text-xl font-semibold text-white flex items-center">
+                            <Activity className="w-5 sm:w-6 h-5 sm:h-6 mr-2 text-orange-400" />
+                            <span className="truncate">
+                                {modoMonitorizacion ? 'Monitorización de Variables' : 'Datos en Tiempo Real'}
+                            </span>
+                            {connectionStatus === 'connected' && !modoMonitorizacion && (
+                                <span className="ml-2 text-xs sm:text-sm px-2 py-1 bg-green-600 bg-opacity-30 text-green-300 rounded whitespace-nowrap">
                                     En vivo
                                 </span>
                             )}
                         </h2>
 
                         <button
-                            onClick={() => setModoMonitorizacion(true)}
-                            className="px-4 py-2 bg-green-500 text-white rounded-lg ml-4 flex items-center gap-2"
+                            onClick={() => setModoMonitorizacion(!modoMonitorizacion)}
+                            className={`w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2 text-white rounded-lg flex items-center justify-center gap-2 transition-colors text-sm sm:text-base ${modoMonitorizacion
+                                    ? 'bg-red-500 hover:bg-red-600'
+                                    : 'bg-green-500 hover:bg-green-600'
+                                }`}
                         >
-                            <Sun className="w-5 h-5" />
-                            Activar Monitorización
+                            {modoMonitorizacion ? (
+                                <>
+                                    <Monitor className="w-4 sm:w-5 h-4 sm:h-5" />
+                                    <span className="hidden sm:inline">Ocultar Monitorización</span>
+                                    <span className="sm:hidden">Ocultar</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Sun className="w-4 sm:w-5 h-4 sm:h-5" />
+                                    <span className="hidden sm:inline">Activar Monitorización</span>
+                                    <span className="sm:hidden">Activar</span>
+                                </>
+                            )}
                         </button>
                     </div>
                     {/* Panel de Datos en Tiempo Real */}
                     {modoMonitorizacion ? (
                         <MonitorizacionVariables
                             variablesRecibidas={variablesConfig?.variables || []}
-                            onAsignar={asignaciones => {
-                                setAsignacionesMonitor(asignaciones);
-                                setModoMonitorizacion(false); // Oculta el panel tras confirmar
-                                // Aquí puedes guardar las asignaciones en el backend o en el estado global
-                            }}
+                            onAsignar={handleAsignacionesMonitor}
+                            datosActuales={liveData[0] || {}} // Pasar datos actuales
                         />
                     ) : (
                         <DatosEnTiempoReal

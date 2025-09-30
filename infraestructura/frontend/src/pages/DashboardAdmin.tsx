@@ -25,10 +25,10 @@ export default function DashboardAdmin() {
             const usuariosMapeados: Usuario[] = response.data.map((item: any) => ({
                 id: item.usuario.id,
                 nombre: item.usuario.nombre,
-                email: item.usuario.correo, // ← Nota: cambio de 'correo' a 'email'
-                fechaRegistro: item.usuario.fechaRegistro.split('T')[0], // Solo la fecha
+                email: item.usuario.correo, 
+                fechaRegistro: item.usuario.fechaRegistro.split('T')[0], 
                 ultimoAcceso: item.usuario.ultimoAcceso,
-                estado: item.usuario.estado // Por defecto
+                estado: item.usuario.estado 
             }));
 
             setUsuarios(usuariosMapeados);

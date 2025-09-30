@@ -91,9 +91,11 @@ export async function detectarVariablesHTTP(config: any): Promise<any[]> {
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     const contentType = response.headers.get('content-type') || '';
     const responseText = await response.text();
+    console.log('Respuesta HTTP recibida:', responseText);
     const formato = contentType.includes('application/json') ? 'json' : 'text';
     const parsedData = parsearMensaje(responseText, formato);
     const variablesDetectadas = convertirParsedDataAVariables(parsedData);
+    console.log('Variables detectadas HTTP:', variablesDetectadas);
     if (variablesDetectadas.length === 0) {
         throw new Error('No se detectaron variables válidas en la respuesta HTTP.');
     }
