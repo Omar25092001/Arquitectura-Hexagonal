@@ -6,6 +6,12 @@ interface ModalMonitorizacionProps {
     isOpen: boolean;
     onClose: () => void;
     asignaciones: Record<string, string>;
+    rangos: Record<string, {
+        criticoMin: string;
+        optimoMin: string;
+        optimoMax: string;
+        bajoMax: string;
+    }>;
     datosActuales: Record<string, number>;
     showAsModal?: boolean;
 }
@@ -22,6 +28,7 @@ export default function ModalMonitorizacion({
     isOpen,
     onClose,
     asignaciones,
+    rangos,
     datosActuales,
     showAsModal = true
 }: ModalMonitorizacionProps) {
@@ -33,44 +40,18 @@ export default function ModalMonitorizacion({
     const [valoresSimulados, setValoresSimulados] = useState<Record<string, number>>({});
     const [inputsTemporales, setInputsTemporales] = useState<Record<string, string>>({});
 
-    
+    const unidades: Record<string, string> = {
+        temperatura: "°C",
+        humedad: "%",
+        radiacion: "lux", // o "W/m²" o lo que corresponda
+        co2: "ppm",
+        viento: "m/s"
+    };
 
     const determinarEstado = (variable: string, valor: number): EstadoVariable => {
-        const configs = {
-            temperatura: {
-                optimo: [18, 25],
-                bajo: [10, 18],
-                unidad: '°C',
-                icono: <Thermometer className="w-5 h-5" />
-            },
-            humedad: {
-                optimo: [60, 70],
-                bajo: [40, 60],
-                unidad: '%',
-                icono: <Droplets className="w-5 h-5" />
-            },
-            radiacion: {
-                optimo: [400, 800],
-                bajo: [200, 400],
-                unidad: 'W/m²',
-                icono: <Sun className="w-5 h-5" />
-            },
-            co2: {
-                optimo: [800, 1200],
-                bajo: [400, 800],
-                unidad: 'ppm',
-                icono: <Activity className="w-5 h-5" />
-            },
-            viento: {
-                optimo: [0.5, 2.0],
-                bajo: [0, 0.5],
-                unidad: 'm/s',
-                icono: <Wind className="w-5 h-5" />
-            }
-        };
-
-        const config = configs[variable as keyof typeof configs];
-        if (!config) {
+        const rango = rangos[variable];
+        // Si no hay rango definido, retorna óptimo por defecto
+        if (!rango) {
             return {
                 estado: 'optimo',
                 valor,
@@ -80,30 +61,45 @@ export default function ModalMonitorizacion({
             };
         }
 
+        // Convierte los valores a número
+        const bajoMax = parseFloat(rango.bajoMax);
+        const optimoMin = parseFloat(rango.optimoMin);
+        const optimoMax = parseFloat(rango.optimoMax);
+        const criticoMax = parseFloat(rango.criticoMin);
+
         let estado: 'optimo' | 'bajo' | 'critico' = 'optimo';
         let color = 'text-green-400';
 
-        if (valor >= config.optimo[0] && valor <= config.optimo[1]) {
+        if (valor >= optimoMin && valor <= optimoMax) {
             estado = 'optimo';
             color = 'text-green-400';
-        } else if (valor >= config.bajo[0] && valor < config.bajo[1]) {
+        } else if (valor <= bajoMax) {
             estado = 'bajo';
-            color = 'text-yellow-400';
-        } else {
+            color = 'text-blue-400';
+        } else if (valor >= criticoMax) {
             estado = 'critico';
             color = 'text-red-400';
         }
 
+        // Puedes mantener el icono según la variable estándar
+        const iconos: Record<string, React.ReactNode> = {
+            temperatura: <Thermometer className="w-5 h-5" />,
+            humedad: <Droplets className="w-5 h-5" />,
+            radiacion: <Sun className="w-5 h-5" />,
+            co2: <Activity className="w-5 h-5" />,
+            viento: <Wind className="w-5 h-5" />
+        };
+
         return {
             estado,
             valor,
-            rango: `${config.optimo[0]}-${config.optimo[1]} ${config.unidad}`,
-            icono: config.icono,
+            rango: `${optimoMin} - ${optimoMax}`,
+            icono: iconos[variable] || <Activity className="w-5 h-5" />,
             color
         };
     };
 
-    
+
 
     // Función para obtener el valor final (simulado o real)
     const obtenerValorFinal = (varEstandar: string, varRecibida: string): number => {
@@ -323,8 +319,8 @@ export default function ModalMonitorizacion({
                                         </h4>
                                     </div>
                                     <span className={`px-2 py-1 rounded text-xs font-medium flex-shrink-0 ${estado.estado === 'optimo' ? 'bg-green-600 bg-opacity-20 text-green-300' :
-                                            estado.estado === 'bajo' ? 'bg-yellow-500 bg-opacity-20 text-yellow-300' :
-                                                'bg-red-600 bg-opacity-20 text-red-300'
+                                        estado.estado === 'bajo' ? 'bg-yellow-500 bg-opacity-20 text-yellow-300' :
+                                            'bg-red-600 bg-opacity-20 text-red-300'
                                         }`}>
                                         {estado.estado}
                                     </span>
@@ -334,7 +330,7 @@ export default function ModalMonitorizacion({
                                     <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">
                                         {estado.valor}
                                         <span className="text-sm text-gray-400 ml-1">
-                                            {estado.rango.split(' ').pop()}
+                                            {unidades[variable] || ""}
                                         </span>
                                     </p>
                                     <p className="text-xs text-gray-400 truncate">
@@ -377,8 +373,8 @@ export default function ModalMonitorizacion({
                             }
                         }}
                         className={`px-3 py-2 text-white rounded-lg flex items-center gap-2 text-sm ${modoSimulacion
-                                ? 'bg-green-600 hover:bg-green-700'
-                                : 'bg-purple-600 hover:bg-purple-700'
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-purple-600 hover:bg-purple-700'
                             }`}
                     >
                         {modoSimulacion ? (

@@ -5,6 +5,7 @@ import { CheckCircle, ArrowRight, Check, X, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ModalArchivoExcel from '../components/Variables/ModalArchivoExcel';
 import ModalProtocolos from '../components/Variables/ModalProtocolos';
+import { useExcelFileSection } from "@/components/shared/ExcelFileSectionContext";
 
 import {
     detectarVariablesMQTT,
@@ -30,6 +31,8 @@ export default function Variables() {
     //Manejo de Excel
     const [showDateRangeModal, setShowDateRangeModal] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const { excelFile } = useExcelFileSection();
+    const [rangoFechasSeleccionado, setRangoFechasSeleccionado] = useState(false);
 
     // PASOS DE NAVEGACIÓN
     const steps = [
@@ -93,8 +96,8 @@ export default function Variables() {
             } else if (dataSourceConfig.protocol === 'websocket') {
                 variablesDetectadas = await detectarVariablesWebSocket(dataSourceConfig.config);
             } else if (dataSourceConfig.protocol === 'file') {
-                if (!selectedFile) throw new Error('Selecciona un archivo Excel primero.');
-                variablesDetectadas = await detectarVariablesExcel(dataSourceConfig.config, selectedFile);
+                if (!excelFile) throw new Error('Selecciona un archivo Excel primero.');
+                variablesDetectadas = await detectarVariablesExcel(dataSourceConfig.config, excelFile);
                 setShowDateRangeModal(true);
             } else if (dataSourceConfig.protocol === 'influx') {
                 variablesDetectadas = await detectarVariablesInflux(dataSourceConfig.config);
@@ -108,33 +111,21 @@ export default function Variables() {
         }
     };
 
-    const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files && event.target.files[0];
-        if (file) {
-            setSelectedFile(file);
-            setError(null);
-        }
-    };
 
     const handleDateRangeSelected = async (rangeData: any) => {
         try {
-
-
-            // Ahora detectar variables normalmente usando los datos filtrados
-            if (dataSourceConfig && selectedFile) {
-                const variablesDetectadas = await detectarVariablesExcel(dataSourceConfig.config, selectedFile);
-
+            if (dataSourceConfig && excelFile) {
+                const variablesDetectadas = await detectarVariablesExcel(dataSourceConfig.config, excelFile);
                 setVariables(variablesDetectadas);
                 setLastFetchTime(new Date());
-
-                // Guardar datos filtrados para usar en Ejecución
                 localStorage.setItem('dateRangeData', JSON.stringify(rangeData));
+                setRangoFechasSeleccionado(true); // <-- Marca como seleccionado
+                setShowDateRangeModal(false);     // <-- Cierra el modal
             }
         } catch (error: any) {
             setError(`Error procesando el rango de fechas: ${error.message}`);
         }
     };
-
     //MANEJAR SELECCIÓN DE VARIABLES
     const toggleVariableSelection = (id: number) => {
         setSelectedVariables(prev => {
@@ -322,9 +313,12 @@ export default function Variables() {
                             </span>
                             <button
                                 onClick={() => { handleTimeModalOpen(); }}
-                                disabled={selectedVariables.length === 0}
+                                disabled={
+                                    selectedVariables.length === 0 ||
+                                    (dataSourceConfig.protocol === 'file' && !rangoFechasSeleccionado)
+                                }
                                 className={`px-4 py-2 rounded-lg flex items-center
-                                    ${selectedVariables.length === 0
+                 ${selectedVariables.length === 0 || (dataSourceConfig.protocol === 'file' && !rangoFechasSeleccionado)
                                         ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                                         : 'bg-orange-400 text-white hover:bg-orange-500'} transition-colors`}
                             >
@@ -332,15 +326,15 @@ export default function Variables() {
                                 <ArrowRight className="ml-2" />
                             </button>
                         </div>
+
+                        {/* Aquí va tu mensaje */}
+                        {dataSourceConfig.protocol === 'file' && !rangoFechasSeleccionado && (
+                            <span className="text-xs text-red-400 block mt-2">
+                                Debes seleccionar el rango de fechas antes de continuar.
+                            </span>
+                        )}
                     </div>
                 </div>
-                <ModalArchivoExcel
-                    isOpen={showFileModal}
-                    onClose={() => setShowFileModal(false)}
-                    selectedFile={selectedFile}
-                    error={error}
-                    onFileSelection={handleFileSelection}
-                />
 
                 <ModalProtocolos
                     isOpen={showTimeModal}
@@ -349,11 +343,11 @@ export default function Variables() {
                     onIntervaloChange={setIntervaloMinutos}
                     onConfirm={handleTimeModalClose}
                 />
-                {showDateRangeModal && selectedFile && dataSourceConfig && (
+                {showDateRangeModal && excelFile && dataSourceConfig && (
                     <SeleccionarRangoFecha
                         isOpen={showDateRangeModal}
                         onClose={() => setShowDateRangeModal(false)}
-                        file={selectedFile}
+                        file={excelFile}
                         config={dataSourceConfig.config}
                         onDateRangeSelected={handleDateRangeSelected}
                     />

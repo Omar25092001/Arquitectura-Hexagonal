@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle, XCircle, Loader2, FileSpreadsheet, Upload, File, HelpCircle } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import FormatoExcel from '../Formatos/FormatoExcel';
+import { useExcelFileSection } from "@/components/shared/ExcelFileSectionContext";
 
 interface ConfigExcelProps {
     onConnectionStateChange?: (state: 'idle' | 'testing' | 'success' | 'error') => void;
@@ -24,6 +25,8 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
     const [connectionMessage, setConnectionMessage] = useState('');
     const [availableSheets, setAvailableSheets] = useState<string[]>([]);
     const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
+    const { setExcelFile } = useExcelFileSection();
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -38,6 +41,9 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
             const file = e.target.files[0];
             setSelectedFile(file);
 
+            // Guarda el archivo en el contexto
+            setExcelFile(file);
+
             setConnectionState('idle');
             setConnectionMessage('');
             setAvailableSheets([]);
@@ -48,7 +54,6 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
                 fileSize: file.size,
                 fileType: file.type
             };
-            console.log('📝 Enviando config Excel (archivo):', configCompleta);
             onConfigChange?.(configCompleta);
         }
     };
@@ -345,8 +350,8 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
                 )}
             </div>
             <FormatoExcel
-                isOpen={mostrarModalFormato} 
-                onClose={() => setMostrarModalFormato(false)} 
+                isOpen={mostrarModalFormato}
+                onClose={() => setMostrarModalFormato(false)}
             />
         </div>
     );

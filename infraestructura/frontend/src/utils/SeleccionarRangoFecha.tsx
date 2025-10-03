@@ -280,9 +280,6 @@ const SeleccionarRangoFecha = ({
                                 <p className="text-gray-400 text-sm">Analiza datos dentro de un período específico</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="text-gray-400 hover:text-white">
-                            <X className="w-6 h-6" />
-                        </button>
                     </div>
 
                     {/* Loading */}
