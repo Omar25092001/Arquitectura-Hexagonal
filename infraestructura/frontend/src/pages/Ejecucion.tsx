@@ -40,7 +40,7 @@ export default function Ejecucion() {
 
 
     const [modoMonitorizacion, setModoMonitorizacion] = useState(false);
-
+    
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
         { id: 2, title: 'Variables', active: true },

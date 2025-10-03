@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Thermometer, Droplets, Sun, Wind, Activity, ArrowLeft, RotateCcw, Edit3 } from 'lucide-react';
+import { X, Thermometer, Droplets, Sun, Wind, Activity, ArrowLeft, RotateCcw, Beaker, Monitor } from 'lucide-react';
+import SimularMonitorizacion from './SimularMonitorizacion';
 
 interface ModalMonitorizacionProps {
     isOpen: boolean;
@@ -27,43 +28,42 @@ export default function ModalMonitorizacion({
 
     if (showAsModal && !isOpen) return null;
 
-    // Estado para valores simulados (override manual)
+    // Estados
+    const [modoSimulacion, setModoSimulacion] = useState(false);
     const [valoresSimulados, setValoresSimulados] = useState<Record<string, number>>({});
+    const [inputsTemporales, setInputsTemporales] = useState<Record<string, string>>({});
+
+    
 
     const determinarEstado = (variable: string, valor: number): EstadoVariable => {
         const configs = {
             temperatura: {
                 optimo: [18, 25],
                 bajo: [10, 18],
-                critico: [0, 10, 25, 50],
                 unidad: '°C',
                 icono: <Thermometer className="w-5 h-5" />
             },
             humedad: {
                 optimo: [60, 70],
                 bajo: [40, 60],
-                critico: [0, 40, 70, 100],
                 unidad: '%',
                 icono: <Droplets className="w-5 h-5" />
             },
             radiacion: {
                 optimo: [400, 800],
                 bajo: [200, 400],
-                critico: [0, 200, 800, 1500],
                 unidad: 'W/m²',
                 icono: <Sun className="w-5 h-5" />
             },
             co2: {
                 optimo: [800, 1200],
                 bajo: [400, 800],
-                critico: [0, 400, 1200, 2000],
                 unidad: 'ppm',
                 icono: <Activity className="w-5 h-5" />
             },
             viento: {
                 optimo: [0.5, 2.0],
                 bajo: [0, 0.5],
-                critico: [2.0, 10],
                 unidad: 'm/s',
                 icono: <Wind className="w-5 h-5" />
             }
@@ -88,7 +88,7 @@ export default function ModalMonitorizacion({
             color = 'text-green-400';
         } else if (valor >= config.bajo[0] && valor < config.bajo[1]) {
             estado = 'bajo';
-            color = 'text-blue-400';
+            color = 'text-yellow-400';
         } else {
             estado = 'critico';
             color = 'text-red-400';
@@ -103,27 +103,25 @@ export default function ModalMonitorizacion({
         };
     };
 
+    
+
     // Función para obtener el valor final (simulado o real)
     const obtenerValorFinal = (varEstandar: string, varRecibida: string): number => {
-        // Si hay valor simulado, usarlo
         if (valoresSimulados[varEstandar] !== undefined) {
             return valoresSimulados[varEstandar];
         }
-        // Si no, usar el valor real
         return datosActuales[varRecibida] || 0;
     };
 
-    // Función para simular un valor
-    const simularValor = (variable: string, valor: string) => {
-        // Si el valor está vacío, limpiar la simulación
+    // Funciones de simulación
+    const manejarCambioInput = (variable: string, valor: string) => {
+        setInputsTemporales(prev => ({
+            ...prev,
+            [variable]: valor
+        }));
+
         if (valor === '') {
             limpiarValorSimulado(variable);
-            return;
-        }
-
-        // Permitir valores intermedios como "-", ".", "1.", etc.
-        if (valor === '-' || valor === '.' || valor.endsWith('.')) {
-            // No actualizar el estado pero permitir que se escriba
             return;
         }
 
@@ -136,20 +134,31 @@ export default function ModalMonitorizacion({
         }
     };
 
-    // Función para limpiar valor simulado de una variable
     const limpiarValorSimulado = (variable: string) => {
         setValoresSimulados(prev => {
             const nuevo = { ...prev };
             delete nuevo[variable];
             return nuevo;
         });
+        setInputsTemporales(prev => {
+            const nuevo = { ...prev };
+            delete nuevo[variable];
+            return nuevo;
+        });
     };
 
-    // Función para limpiar todos los valores simulados
     const limpiarTodosLosValores = () => {
         setValoresSimulados({});
+        setInputsTemporales({});
     };
 
+    const volverAMonitorizacion = () => {
+        setModoSimulacion(false);
+        setValoresSimulados({});
+        setInputsTemporales({});
+    };
+
+    // Estados calculados
     const estadosVariables = Object.entries(asignaciones).reduce((acc, [varEstandar, varRecibida]) => {
         if (varRecibida && (datosActuales[varRecibida] !== undefined || valoresSimulados[varEstandar] !== undefined)) {
             const valorFinal = obtenerValorFinal(varEstandar, varRecibida);
@@ -166,13 +175,10 @@ export default function ModalMonitorizacion({
     };
 
     const estadoInvernadero = estadoGeneral();
-
-    const hayDatos = Object.keys(datosActuales).length > 0 &&
-        Object.values(datosActuales).some(valor => valor !== undefined && valor !== null);
-
-    // Verificar si hay datos (reales o simulados)
+    const hayDatos = Object.keys(datosActuales).length > 0 && Object.values(datosActuales).some(valor => valor !== undefined && valor !== null);
     const hayDatosOSimulados = hayDatos || Object.keys(valoresSimulados).length > 0;
 
+    // Imagen del invernadero
     const getInvernaderoImage = () => {
         const baseStyle = "w-full max-w-sm mx-auto h-36 sm:h-48 md:h-56 rounded-lg mb-6 bg-gradient-to-b";
 
@@ -180,7 +186,7 @@ export default function ModalMonitorizacion({
             case 'optimo':
                 return (
                     <div className={`${baseStyle} flex items-center justify-center relative overflow-hidden`}>
-                        <div className="absolute inset-0 bg-green-500 opacity-20"></div>
+                        <div className="absolute inset-0 bg-green-500 opacity-20 animate-pulse"></div>
                         <div className="text-center text-white z-10 px-4">
                             <div className="flex justify-center mb-2">
                                 <img
@@ -196,8 +202,8 @@ export default function ModalMonitorizacion({
                 );
             case 'bajo':
                 return (
-                    <div className={`${baseStyle} flex items-center justify-center relative overflow-hidden`}>
-                        <div className="absolute inset-0 bg-blue-500 opacity-20"></div>
+                    <div className={`${baseStyle} flex items-center justify-center relative overflow-hidden `}>
+                        <div className="absolute inset-0 bg-yellow-500 opacity-20 animate-pulse"></div>
                         <div className="text-center text-white z-10 px-4">
                             <div className="flex justify-center mb-2">
                                 <img
@@ -241,42 +247,9 @@ export default function ModalMonitorizacion({
         }
     };
 
-    const content = (
-        <div className="p-3 sm:p-4 md:p-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center">
-                    <Activity className="w-5 sm:w-6 h-5 sm:h-6 mr-2 text-orange-400 flex-shrink-0" />
-                    <span className="truncate">Monitorización de Invernadero</span>
-                </h2>
-                <div className="flex gap-2">
-                    {/* Botón para limpiar todos los valores simulados */}
-                    {Object.keys(valoresSimulados).length > 0 && (
-                        <button
-                            onClick={limpiarTodosLosValores}
-                            className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center gap-2 text-sm"
-                        >
-                            <RotateCcw className="w-4 h-4" />
-                            <span className="hidden sm:inline">Restaurar valores</span>
-                        </button>
-                    )}
-                    <button
-                        onClick={onClose}
-                        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
-                    >
-                        {showAsModal ? (
-                            <X className="w-5 sm:w-6 h-5 sm:h-6" />
-                        ) : (
-                            <>
-                                <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
-                                <span className="text-sm sm:text-base">Volver a asignaciones</span>
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
-
-            {/* Verificar si hay datos */}
+    // Vista de monitorización
+    const renderVistaMonitorizacion = () => (
+        <>
             {!hayDatosOSimulados ? (
                 // Estado sin datos
                 <div className="text-center py-8 sm:py-16">
@@ -292,7 +265,7 @@ export default function ModalMonitorizacion({
                         No hay datos disponibles
                     </h3>
                     <p className="text-gray-400 text-sm sm:text-base max-w-sm sm:max-w-md mx-auto px-4">
-                        Aún no se han recibido datos de los sensores. Puedes simular valores usando los inputs en las tarjetas de variables.
+                        Aún no se han recibido datos de los sensores. Usa el botón "Simular" para probar valores.
                     </p>
 
                     {/* Mostrar asignaciones configuradas */}
@@ -313,7 +286,7 @@ export default function ModalMonitorizacion({
                     )}
                 </div>
             ) : (
-                // Estado con datos - contenido normal
+                // Estado con datos
                 <>
                     {/* Imagen del invernadero */}
                     <div className="flex justify-center mb-4 sm:mb-6 px-4">
@@ -327,7 +300,7 @@ export default function ModalMonitorizacion({
                         <h3 className="text-base sm:text-lg md:text-xl font-semibold text-white mb-2">
                             Estado General:
                             <span className={`ml-2 ${estadoInvernadero === 'optimo' ? 'text-green-400' :
-                                estadoInvernadero === 'bajo' ? 'text-blue-400' :
+                                estadoInvernadero === 'bajo' ? 'text-yellow-400' :
                                     'text-red-400'
                                 }`}>
                                 {estadoInvernadero === 'optimo' ? 'Óptimo' :
@@ -336,99 +309,137 @@ export default function ModalMonitorizacion({
                                             'Desconocido'}
                             </span>
                         </h3>
-                        {Object.keys(valoresSimulados).length > 0 && (
-                            <p className="text-xs sm:text-sm text-orange-400 mt-1">
-                                🔍 Mostrando valores simulados
-                            </p>
-                        )}
                     </div>
 
-                    {/* Variables monitorizadas */}
+                    {/* Variables monitorizadas (solo lectura) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 px-2 sm:px-0">
-                        {Object.entries(asignaciones).map(([variable, varRecibida]) => {
-                            const estado = estadosVariables[variable];
-                            const valorReal = datosActuales[varRecibida];
-                            const valorSimulado = valoresSimulados[variable];
-                            const esSimulado = valorSimulado !== undefined;
-
-                            return (
-                                <div key={variable} className={`bg-background rounded-lg p-3 sm:p-4 border-2 transition-colors ${esSimulado ? 'border-orange-500 border-opacity-50' : 'border-transparent'
-                                    }`}>
-                                    <div className="flex items-center justify-between mb-2 sm:mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className={estado?.color || 'text-gray-400'}>
-                                                {estado?.icono || <Activity className="w-5 h-5" />}
-                                            </span>
-                                            <h4 className="text-white font-medium capitalize text-xs sm:text-sm md:text-base truncate">
-                                                {variable}
-                                            </h4>
-                                            {esSimulado && (
-                                                <Edit3 className="w-3 h-3 text-orange-400" />
-                                            )}
-                                        </div>
-                                        <span className={`px-2 py-1 rounded text-xs font-medium flex-shrink-0 ${estado?.estado === 'optimo' ? 'bg-green-600 bg-opacity-20 text-green-300' :
-                                                estado?.estado === 'bajo' ? 'bg-blue-500 bg-opacity-20 text-blue-300' :
-                                                    'bg-red-600 bg-opacity-20 text-red-300'
-                                            }`}>
-                                            {estado?.estado || 'N/A'}
-                                        </span>
+                        {Object.entries(estadosVariables).map(([variable, estado]) => (
+                            <div key={variable} className="bg-background rounded-lg p-3 sm:p-4">
+                                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className={estado.color}>{estado.icono}</span>
+                                        <h4 className="text-white font-medium capitalize text-xs sm:text-sm md:text-base truncate">
+                                            {variable}
+                                        </h4>
                                     </div>
-
-                                    <div className="space-y-2">
-                                        {/* Valor actual */}
-                                        <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-                                            {estado?.valor !== undefined ? estado.valor : '--'}
-                                            <span className="text-sm text-gray-400 ml-1">
-                                                {estado?.estado ? estado.rango.split(' ').pop() : ''}
-                                            </span>
-                                        </p>
-
-                                        {/* Input para simular valor */}
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="number"
-                                                placeholder={`Simular ${variable}`}
-                                                value={valorSimulado !== undefined ? valorSimulado : ''}
-                                                onChange={(e) => simularValor(variable, e.target.value)}
-                                                className="flex-1 px-2 py-1 bg-secundary border border-gray-600 rounded text-white text-xs placeholder-gray-400 focus:border-orange-400 focus:outline-none"
-                                                step="0.1"
-                                            />
-                                            {esSimulado && (
-                                                <button
-                                                    onClick={() => limpiarValorSimulado(variable)}
-                                                    className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
-                                                    title="Restaurar valor real"
-                                                >
-                                                    <RotateCcw className="w-3 h-3" />
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        {/* Información adicional */}
-                                        <div className="text-xs space-y-1">
-                                            <p className="text-gray-400 truncate">
-                                                Óptimo: {estado?.rango || 'N/A'}
-                                            </p>
-                                            <p className="text-gray-500 truncate">
-                                                Variable: {varRecibida}
-                                                {valorReal !== undefined && esSimulado && (
-                                                    <span className="text-blue-400 ml-1">
-                                                        (Real: {valorReal})
-                                                    </span>
-                                                )}
-                                            </p>
-                                        </div>
-                                    </div>
+                                    <span className={`px-2 py-1 rounded text-xs font-medium flex-shrink-0 ${estado.estado === 'optimo' ? 'bg-green-600 bg-opacity-20 text-green-300' :
+                                            estado.estado === 'bajo' ? 'bg-yellow-500 bg-opacity-20 text-yellow-300' :
+                                                'bg-red-600 bg-opacity-20 text-red-300'
+                                        }`}>
+                                        {estado.estado}
+                                    </span>
                                 </div>
-                            );
-                        })}
+
+                                <div className="space-y-1">
+                                    <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">
+                                        {estado.valor}
+                                        <span className="text-sm text-gray-400 ml-1">
+                                            {estado.rango.split(' ').pop()}
+                                        </span>
+                                    </p>
+                                    <p className="text-xs text-gray-400 truncate">
+                                        Óptimo: {estado.rango}
+                                    </p>
+                                    <p className="text-xs text-gray-500 truncate">
+                                        Variable: {asignaciones[variable]}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </>
+            )}
+        </>
+    );
+
+    const content = (
+        <div className="p-3 sm:p-4 md:p-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white flex items-center">
+                    <Activity className="w-5 sm:w-6 h-5 sm:h-6 mr-2 text-orange-400 flex-shrink-0" />
+                    <span className="truncate">
+                        {modoSimulacion ? 'Simulación de Variables' : 'Monitorización de Invernadero'}
+                    </span>
+                </h2>
+                <div className="flex gap-2">
+                    {/* Botón para cambiar modo */}
+                    <button
+                        onClick={() => {
+                            const nuevoModo = !modoSimulacion;
+                            setModoSimulacion(nuevoModo);
+
+                            // ✅ Si vamos a simulación, mantener valores. Si vamos a monitorización, limpiar
+                            if (!nuevoModo) {
+                                // Volviendo a monitorización - limpiar valores simulados
+                                setValoresSimulados({});
+                                setInputsTemporales({});
+                            }
+                        }}
+                        className={`px-3 py-2 text-white rounded-lg flex items-center gap-2 text-sm ${modoSimulacion
+                                ? 'bg-green-600 hover:bg-green-700'
+                                : 'bg-purple-600 hover:bg-purple-700'
+                            }`}
+                    >
+                        {modoSimulacion ? (
+                            <>
+                                <Monitor className="w-4 h-4" />
+                                <span className="hidden sm:inline">Monitorización</span>
+                            </>
+                        ) : (
+                            <>
+                                <Beaker className="w-4 h-4" />
+                                <span className="hidden sm:inline">Simular</span>
+                            </>
+                        )}
+                    </button>
+                    {/* Botón limpiar (solo en monitorización si hay valores simulados) */}
+                    {!modoSimulacion && Object.keys(valoresSimulados).length > 0 && (
+                        <button
+                            onClick={limpiarTodosLosValores}
+                            className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center gap-2 text-sm"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                            <span className="hidden sm:inline">Restaurar</span>
+                        </button>
+                    )}
+
+                    <button
+                        onClick={onClose}
+                        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                        {showAsModal ? (
+                            <X className="w-5 sm:w-6 h-5 sm:h-6" />
+                        ) : (
+                            <>
+                                <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
+                                <span className="text-sm sm:text-base">Volver</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            {/* Renderizar vista según el modo */}
+            {modoSimulacion ? (
+                <SimularMonitorizacion
+                    asignaciones={asignaciones}
+                    datosActuales={datosActuales}
+                    valoresSimulados={valoresSimulados}
+                    inputsTemporales={inputsTemporales}
+                    onCambioInput={manejarCambioInput}
+                    onLimpiarValor={limpiarValorSimulado}
+                    onLimpiarTodos={limpiarTodosLosValores}
+                    onVolverMonitorizacion={volverAMonitorizacion}
+                    determinarEstado={determinarEstado}
+                />
+            ) : (
+                renderVistaMonitorizacion()
             )}
         </div>
     );
 
-    // Si es modal, envolver en overlay con responsive
+    // Si es modal, envolver en overlay
     if (showAsModal) {
         return (
             <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex items-center justify-center z-50 p-2 sm:p-4">
@@ -439,7 +450,6 @@ export default function ModalMonitorizacion({
         );
     }
 
-    // Si no es modal, renderizar como componente normal
     return (
         <div className="bg-secundary rounded-xl sm:rounded-2xl shadow-xl w-full max-w-xs sm:max-w-2xl md:max-w-4xl mx-auto">
             {content}
