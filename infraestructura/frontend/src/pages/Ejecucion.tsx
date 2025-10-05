@@ -14,7 +14,6 @@ import {
     leerArchivoExcelConRango
 } from '../utils/ExtraerDatos';
 import ModalDetalleRegistro from '@/components/Ejecucion/ModalDetalleRegistro';
-import ModalResultadosAlgoritmos from '@/components/Ejecucion/ModalResultadosAlgoritmos';
 
 
 export default function Ejecucion() {
@@ -35,11 +34,9 @@ export default function Ejecucion() {
     const [selectedData, setSelectedData] = useState<DataPoint | null>(null);
     const [intervaloTiempo, setIntervaloTiempo] = useState<number>(15);
 
-    const [rangoDireccion, setRangoDireccion] = useState<'arriba' | 'abajo' | 'actual'>('arriba');
+    const [rangoDireccion, setRangoDireccion] = useState<'arriba' | 'abajo' >('arriba');
     const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>('');
 
-    const [algorithmResults, setAlgorithmResults] = useState<any[]>([]);
-    const [showResultsModal, setShowResultsModal] = useState(false);
     const [isProcessingAlgorithm, setIsProcessingAlgorithm] = useState(false);
 
 
@@ -232,12 +229,8 @@ export default function Ejecucion() {
                 }
             };
 
-            // Agregar resultado a la lista (mantener últimos 5)
-            setAlgorithmResults(prev => [result, ...prev.slice(0, 4)]);
-
             // Cerrar modal de selección y abrir modal de resultados
             setShowDataModal(false);
-            setShowResultsModal(true);
 
             console.log('Algoritmo ejecutado exitosamente:', result);
 
@@ -496,12 +489,6 @@ export default function Ejecucion() {
                 isProcessingAlgorithm={isProcessingAlgorithm}
                 onEjecutarAlgoritmo={handleSeleccionarRango}
                 usuarioId={userId}
-            />
-
-            <ModalResultadosAlgoritmos
-                isOpen={showResultsModal}
-                onClose={() => setShowResultsModal(false)}
-                algorithmResults={algorithmResults}
             />
         </div>
     );

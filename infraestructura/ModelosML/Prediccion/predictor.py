@@ -4,21 +4,55 @@ import os
 import sys
 import json
 
-def cargar_modelo(nombre_modelo):
-    """Carga el modelo previamente entrenado"""
+def buscar_modelo_predictivo(id_usuario, nombre_modelo):
+    """Busca un modelo predictivo específico"""
     dir_actual = os.path.dirname(os.path.abspath(__file__))
-    carpeta_modelos = os.path.join(
-        dir_actual,
-        "..",
-        "Entrenamiento",
-        "GradientBoostingRegressor",
-        "ModelosGradientBoosting"
-    )
-    ruta_modelo = os.path.join(carpeta_modelos, nombre_modelo)
+    carpeta_modelos = os.path.join(dir_actual, "ModelosPredictivos")
+    
+    # Construir nombre del archivo con tipo
+    nombre_archivo = f"{id_usuario}_{nombre_modelo}_predictivo.pkl"
+    ruta_modelo = os.path.join(carpeta_modelos, nombre_archivo)
+    
+    print(f"Buscando modelo predictivo: {ruta_modelo}")
     
     if not os.path.exists(ruta_modelo):
-        raise Exception(f"Modelo no encontrado: {ruta_modelo}")
+        # Listar modelos disponibles
+        modelos_disponibles = listar_modelos_predictivos(id_usuario)
+        error_msg = f"Modelo '{nombre_archivo}' no encontrado.\n"
+        if modelos_disponibles:
+            error_msg += f"Modelos predictivos disponibles para usuario {id_usuario}:\n"
+            for modelo in modelos_disponibles:
+                error_msg += f"  - {modelo}\n"
+        else:
+            error_msg += f"No se encontraron modelos predictivos para el usuario {id_usuario}"
+        raise Exception(error_msg)
     
+    print(f"Modelo encontrado: {ruta_modelo}")
+    return ruta_modelo
+
+def listar_modelos_predictivos(id_usuario):
+    """Lista todos los modelos predictivos de un usuario"""
+    dir_actual = os.path.dirname(os.path.abspath(__file__))
+    carpeta_modelos = os.path.join(dir_actual, "ModelosPredictivos")
+    
+    if not os.path.exists(carpeta_modelos):
+        return []
+    
+    modelos = []
+    try:
+        archivos = os.listdir(carpeta_modelos)
+        for archivo in archivos:
+            if archivo.endswith('_predictivo.pkl') and archivo.startswith(f"{id_usuario}_"):
+                # Extraer nombre: usuario_nombreModelo_predictivo.pkl -> nombreModelo
+                nombre_limpio = archivo.replace('.pkl', '').replace(f"{id_usuario}_", '').replace('_predictivo', '')
+                modelos.append(nombre_limpio)
+    except Exception as e:
+        print(f"Error listando modelos: {e}")
+    
+    return modelos
+
+def cargar_modelo(ruta_modelo):
+    """Carga el modelo desde la ruta especificada"""
     modelo = joblib.load(ruta_modelo)
     return modelo
 
@@ -42,39 +76,43 @@ def predecir_multiples(modelo, valores, n_pasos=7):
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) < 3:
-            raise Exception("Faltan argumentos: nombreModelo y valores")
+        if len(sys.argv) < 4:
+            raise Exception("Faltan argumentos: usuarioId, nombreModelo y valores")
         
-        nombre_modelo = sys.argv[1]
-        valores_str = sys.argv[2]
+        # Parametros: usuarioId, nombreModelo, valores, [nPasos]
+        usuario_id = sys.argv[1]
+        nombre_modelo = sys.argv[2]
+        valores_str = sys.argv[3]
         
-        # Obtener número de pasos (opcional, por defecto 7)
+        # ✅ SIEMPRE 7 pasos, sin importar lo que venga como parámetro
         n_pasos = 7
-        if len(sys.argv) > 3:
-            try:
-                n_pasos = int(sys.argv[3])
-            except:
-                pass
         
-        # Intentar parsear como JSON
+        print(f"PREDICTOR - Usuario: {usuario_id}, Modelo: {nombre_modelo}")
+        print(f"Prediciendo los siguientes {n_pasos} valores")
+        
+        # Parsear valores
         valores_str_limpio = valores_str.replace('\\"', '"')
-        
         try:
             valores = json.loads(valores_str_limpio)
         except json.JSONDecodeError as e:
-            raise Exception(f"Error al parsear valores: {str(e)}. Recibido: {valores_str}")
+            raise Exception(f"Error parseando valores: {str(e)}")
         
-        # Cargar modelo
-        modelo = cargar_modelo(nombre_modelo)
+        # Buscar y cargar modelo
+        ruta_modelo = buscar_modelo_predictivo(usuario_id, nombre_modelo)
+        modelo = cargar_modelo(ruta_modelo)
         
-        # Predecir múltiples valores
+        # Hacer predicciones (siempre 7)
         predicciones = predecir_multiples(modelo, valores, n_pasos)
         
         # Resultado exitoso
         resultado = {
             "success": True,
+            "tipo": "predictivo",
+            "usuario_id": usuario_id,
+            "nombre_modelo": nombre_modelo,
             "predicciones": predicciones,
-            "n_pasos": n_pasos
+            "n_pasos": n_pasos,
+            "valores_entrada": valores
         }
         print(json.dumps(resultado))
         
@@ -82,7 +120,10 @@ if __name__ == "__main__":
         # Resultado con error
         resultado = {
             "success": False,
-            "error": str(e)
+            "tipo": "predictivo",
+            "error": str(e),
+            "usuario_id": usuario_id if 'usuario_id' in locals() else None,
+            "nombre_modelo": nombre_modelo if 'nombre_modelo' in locals() else None
         }
         print(json.dumps(resultado))
         sys.exit(1)

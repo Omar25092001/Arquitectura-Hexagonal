@@ -1,17 +1,24 @@
 import { EjecutorModeloPython } from '../../infraestructura/backend/adaptadores/EjecutorModeloPython';
 
 export class EjecutarAlgoritmo {
-    constructor(private ejecutorModelo: EjecutorModeloPython) {}
+    constructor(private readonly ejecutorML: EjecutorModeloPython) {}
 
-    async run(nombreModelo: string, valores: number[]): Promise<any> {
-        if (!nombreModelo || nombreModelo.trim() === '') {
-            throw new Error('El nombre del modelo es requerido');
+    async run(usuarioId: string, nombreModelo: string, valores: number[], nPasos: number = 7): Promise<any> {
+        try {
+            console.log(`📊 Ejecutando algoritmo - Usuario: ${usuarioId}, Modelo: ${nombreModelo}`);
+            
+            // Validaciones básicas
+            if (valores.length < 5) {
+                throw new Error('Se requieren al menos 5 valores para hacer predicciones');
+            }
+
+            // ✅ Usar el ejecutor que detecta automáticamente el tipo
+            const resultado = await this.ejecutorML.ejecutar(usuarioId, nombreModelo, valores, { nPasos });
+            
+            return resultado;
+        } catch (error: any) {
+            console.error('❌ Error en caso de uso:', error);
+            throw new Error(`Error ejecutando algoritmo: ${error.message}`);
         }
-
-        if (!valores || valores.length < 5) {
-            throw new Error('Se necesitan al menos 5 valores');
-        }
-
-        return await this.ejecutorModelo.ejecutar(nombreModelo, valores);
     }
 }

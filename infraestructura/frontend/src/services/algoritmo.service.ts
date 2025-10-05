@@ -2,10 +2,14 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_ENDPOINT;
 
-type DatosPrediccion = {
+export interface DatosPrediccion {
+    usuarioId: string;
     nombreModelo: string;
     valores: number[];
-    nPasos: number;
+    nPasos?: number;
+    objetivo?: string;
+    iteraciones?: number;
+    umbralConfianza?: number;
 }
 
 export type Algoritmo = {
