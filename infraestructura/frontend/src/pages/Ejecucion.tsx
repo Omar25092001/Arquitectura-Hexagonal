@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useUserStore } from '@/store/user.store';
 import Header from '../components/Header';
 import { ejecutarAlgoritmo } from '@/Algoritmos/Index';
 import MonitorizacionVariables from '@/components/Ejecucion/MonitorizacionVariables'
@@ -18,6 +19,9 @@ import ModalResultadosAlgoritmos from '@/components/Ejecucion/ModalResultadosAlg
 
 export default function Ejecucion() {
     const navigate = useNavigate();
+
+    const userId = useUserStore((state) => state.user.id);
+
     const [isRunning, setIsRunning] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
     const [dataSourceConfig, setDataSourceConfig] = useState<any>(null);
@@ -491,6 +495,7 @@ export default function Ejecucion() {
                 onSelectedAlgorithmChange={setSelectedAlgorithm}
                 isProcessingAlgorithm={isProcessingAlgorithm}
                 onEjecutarAlgoritmo={handleSeleccionarRango}
+                usuarioId={userId}
             />
 
             <ModalResultadosAlgoritmos

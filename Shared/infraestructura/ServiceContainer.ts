@@ -8,9 +8,13 @@ import { VerificarCredenciales } from "../../aplicacion/verificarCredenciales/Ve
 import {ObtenerUsuarios} from '../../aplicacion/CasosUsoUsuario/obtenerUsuarios/ObtenerUsuarios';
 import {EditarUsuario} from '../../aplicacion/CasosUsoUsuario/editarUsuario/EditarUsuario';
 import {EditarEstadoUsuario} from '../../aplicacion/CasosUsoUsuario/editarEstadoUsuario/EditarEstadoUsuario';
+import { ObtenerAlgoritmosUsuario } from "../../aplicacion/CasosUsoAlgoritmo/ObtenerAlgoritmosUsuario";
+import { EjecutarAlgoritmo } from "../../aplicacion/CasosUsoAlgoritmo/EjecutarAlgoritmo";
+import { EjecutorModeloPython } from "../../infraestructura/backend/adaptadores/EjecutorModeloPython";
 import { RepositorioClimaPrisma } from "../../infraestructura/backend/adaptadores/RepositorioClimaPrismaPostgre"
 import { RepositorioUsuarioPrismaPostgre } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioPrismaPostgre"
 import { RepositorioUsuarioInflux } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioInflux"
+import { RepositorioAlgoritmoFileSystem } from "../../infraestructura/backend/adaptadores/RepositorioAlgoritmoFileSystem"
 import { HasheBcrypt } from "../../infraestructura/backend/servicios/HasheBcrypt"
 import {TokenJWT} from "../../infraestructura/backend/servicios/TokenJWT";
 //El contenedor de servicios es el encargado de instanciar los casos de uso y los repositorios
@@ -18,6 +22,7 @@ import {TokenJWT} from "../../infraestructura/backend/servicios/TokenJWT";
 const usuarioRepositorioPostgre = new RepositorioUsuarioPrismaPostgre; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
 const climaRepositorio = new RepositorioClimaPrisma; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
 const usuarioRepositorioInflux = new RepositorioUsuarioInflux; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
+const algoritmoRepositorio = new RepositorioAlgoritmoFileSystem; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
 const servicioHasheo = new HasheBcrypt();
 const Token = new TokenJWT();
 export const ServiceContainer = {
@@ -34,5 +39,9 @@ export const ServiceContainer = {
     obtenerUsuarios: new ObtenerUsuarios(usuarioRepositorioPostgre),
     editarUsuario: new EditarUsuario(usuarioRepositorioPostgre, servicioHasheo),
     editarEstadoUsuario: new EditarEstadoUsuario(usuarioRepositorioPostgre)
+  },
+  algoritmo: {
+    obtenerAlgoritmosUsuario: new ObtenerAlgoritmosUsuario(algoritmoRepositorio),
+    ejecutarAlgoritmo: new EjecutarAlgoritmo(new EjecutorModeloPython())
   }
 }

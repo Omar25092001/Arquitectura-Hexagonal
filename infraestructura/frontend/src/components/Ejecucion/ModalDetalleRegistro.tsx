@@ -1,4 +1,6 @@
 import { type DataPoint } from './DatosEntiempoReal';
+import { useEffect, useState } from 'react';
+import { obtenerAlgoritmos } from '../../services/algoritmo.service';
 
 interface ModalDetalleRegistroProps {
     isOpen: boolean;
@@ -10,6 +12,13 @@ interface ModalDetalleRegistroProps {
     onSelectedAlgorithmChange: (algorithm: string) => void;
     isProcessingAlgorithm: boolean;
     onEjecutarAlgoritmo: (direction: 'arriba' | 'abajo' | 'actual') => void;
+    usuarioId: string; // Agregar el ID de usuario como prop
+}
+
+interface Algoritmo {
+    id: string;
+    nombre: string;
+    fechaCreacion: string;
 }
 
 export default function ModalDetalleRegistro({
@@ -21,28 +30,53 @@ export default function ModalDetalleRegistro({
     selectedAlgorithm,
     onSelectedAlgorithmChange,
     isProcessingAlgorithm,
-    onEjecutarAlgoritmo
+    onEjecutarAlgoritmo,
+    usuarioId
 }: ModalDetalleRegistroProps) {
+    const [algoritmos, setAlgoritmos] = useState<Algoritmo[]>([]);
+    const [loadingAlgoritmos, setLoadingAlgoritmos] = useState(false);
+
+    // Cargar algoritmos cuando se abre el modal
+    useEffect(() => {
+        if (isOpen && usuarioId) {
+            cargarAlgoritmos();
+        }
+    }, [isOpen, usuarioId]);
+
+    const cargarAlgoritmos = async () => {
+        setLoadingAlgoritmos(true);
+        try {
+            const response = await obtenerAlgoritmos(usuarioId);
+            setAlgoritmos(response.algoritmos || []);
+        } catch (error) {
+            console.error('Error al cargar algoritmos:', error);
+            setAlgoritmos([]);
+        } finally {
+            setLoadingAlgoritmos(false);
+        }
+    };
 
     if (!isOpen || !selectedData) return null;
 
     const renderAlgorithmOptions = () => {
-        if (rangoDireccion === 'actual') {
-            return (
-                <>
-                    <option value="">Selecciona un algoritmo</option>
-                    <option value="prediccion1">Persistencia</option>
-                </>
-            );
-        } else {
-            return (
-                <>
-                    <option value="">Selecciona un algoritmo</option>
-                    <option value="prediccion1">Regresión Lineal</option>
-                    <option value="prediccion2">Media Móvil</option>
-                </>
-            );
+        if (loadingAlgoritmos) {
+            return <option value="">Cargando algoritmos...</option>;
         }
+
+        if (algoritmos.length === 0) {
+            return <option value="">No tienes algoritmos entrenados</option>;
+        }
+
+        return (
+            <>
+                <option value="">Selecciona un algoritmo</option>
+                {algoritmos.map(alg => (
+                    <option key={alg.id} value={alg.id}>
+                        {alg.nombre}
+                    </option>
+                ))}
+            </>
+        );
     };
 
     return (
@@ -73,11 +107,12 @@ export default function ModalDetalleRegistro({
                         <option value="actual">Solo este dato</option>
                     </select>
 
-                    <label className="text-gray-300 mb-1">Selecciona el algoritmo:</label>
+                    <label className="text-gray-300 mb-1">Selecciona tu algoritmo:</label>
                     <select
                         value={selectedAlgorithm}
                         onChange={e => onSelectedAlgorithmChange(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg bg-background text-white mb-2"
+                        disabled={loadingAlgoritmos || algoritmos.length === 0}
                     >
                         {renderAlgorithmOptions()}
                     </select>
@@ -85,7 +120,7 @@ export default function ModalDetalleRegistro({
                     {/* Botones de acción */}
                     <button
                         onClick={() => onEjecutarAlgoritmo(rangoDireccion)}
-                        disabled={!selectedAlgorithm || isProcessingAlgorithm}
+                        disabled={!selectedAlgorithm || isProcessingAlgorithm || algoritmos.length === 0}
                         className="w-full px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center"
                     >
                         {isProcessingAlgorithm ? (

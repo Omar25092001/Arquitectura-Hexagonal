@@ -1,4 +1,3 @@
-//import { JwtPayload } from 'jwt-decode';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import Cookies from 'js-cookie';
@@ -8,7 +7,7 @@ import { customCookieStorage } from './cookie-storage';
 
 interface State{
     user:{
-        id:number
+        id: string  // Cambiado de number a string
         nombre: string;
         rol: string;
         token: JwtPayload;
@@ -17,25 +16,25 @@ interface State{
 }
 
 interface Actions{
-    handleLogin: (id:number, nombre:string, rol:string, token:JwtPayload) => void;
+    handleLogin: (id: string, nombre: string, rol: string, token: JwtPayload) => void;
     handleLogout: () => void;
 }
 
-export const useUserStore =create<State & Actions>()(
+export const useUserStore = create<State & Actions>()(
     persist(
         (set) => ({
             user: {
-                id: 0,
+                id: '',  // Cambiado de 0 a ''
                 nombre: '',
                 rol: '',
                 token: {},
                 isLogged: false
             },
-            handleLogin: (id, nombre:string, rol:string, token:JwtPayload) => {
-                set({user: {id,nombre,rol,token, isLogged: true}});
+            handleLogin: (id, nombre: string, rol: string, token: JwtPayload) => {
+                set({user: {id, nombre, rol, token, isLogged: true}});
             },
             handleLogout: () => {
-                set({user: {id:0,nombre:'',rol: '',token:{}, isLogged: false}});
+                set({user: {id: '', nombre: '', rol: '', token: {}, isLogged: false}});
                 Cookies.remove("user-storage");
                 localStorage.clear();
             }
