@@ -4,7 +4,15 @@ import { useState } from 'react';
 interface DataPoint {
     timestamp: string;
     [key: string]: any;
+
+    _indiceFila?: number;
+    _nombreColumnaSeleccionada?: string;
+    _valorColumnaSeleccionada?: number;
+    _totalFilas?: number;
+    _datosColumna?: number[];
+    _columnasDisponibles?: string[];
 }
+
 
 interface DatosEnTiempoRealProps {
     connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';

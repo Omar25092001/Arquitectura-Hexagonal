@@ -44,8 +44,6 @@ export class ExpressAlgoritmoController {
                     message: 'Los valores son requeridos y deben ser un array' 
                 });
             }
-
-            console.log(`🚀 Ejecutando modelo - Usuario: ${usuarioId}, Modelo: ${nombreModelo}`);
             
             // ✅ Pasar todos los parámetros requeridos
             const resultado = await ServiceContainer.algoritmo.ejecutarAlgoritmo.run(
@@ -60,7 +58,7 @@ export class ExpressAlgoritmoController {
                 data: resultado
             });
         } catch (error: any) {
-            console.error('❌ Error en ejecución:', error);
+            console.error('Error en ejecución:', error);
             return res.status(400).json({ 
                 success: false,
                 message: error.message 

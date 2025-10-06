@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import SeleccionarRangoFecha from '@/utils/SeleccionarRangoFecha';
-import { CheckCircle, ArrowRight, Check, X, RefreshCw } from 'lucide-react';
+import { CheckCircle, ArrowRight, Check, X, RefreshCw, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import ModalArchivoExcel from '../components/Variables/ModalArchivoExcel';
 import ModalProtocolos from '../components/Variables/ModalProtocolos';
 import { useExcelFileSection } from "@/components/shared/ExcelFileSectionContext";
 
@@ -24,13 +23,11 @@ export default function Variables() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
-    const [showFileModal, setShowFileModal] = useState(false);
     const [showTimeModal, setShowTimeModal] = useState(false);
     const [intervaloMinutos, setIntervaloMinutos] = useState<number>(1);
 
     //Manejo de Excel
     const [showDateRangeModal, setShowDateRangeModal] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const { excelFile } = useExcelFileSection();
     const [rangoFechasSeleccionado, setRangoFechasSeleccionado] = useState(false);
 
@@ -61,6 +58,11 @@ export default function Variables() {
         }
         setShowTimeModal(true);
     };
+
+    const handleGoBack = () => {
+        navigate('/usuario/fuente-datos');
+    };
+
     // Cargar configuración
     useEffect(() => {
         const savedConfig = localStorage.getItem('dataSourceConfig');
@@ -77,9 +79,6 @@ export default function Variables() {
         }
 
         setDataSourceConfig(config);
-        if (config.needsFile) {
-            setShowFileModal(true);
-        }
     }, [navigate]);
 
 
@@ -119,13 +118,14 @@ export default function Variables() {
                 setVariables(variablesDetectadas);
                 setLastFetchTime(new Date());
                 localStorage.setItem('dateRangeData', JSON.stringify(rangeData));
-                setRangoFechasSeleccionado(true); // <-- Marca como seleccionado
-                setShowDateRangeModal(false);     // <-- Cierra el modal
+                setRangoFechasSeleccionado(true);
+                setShowDateRangeModal(false);
             }
         } catch (error: any) {
             setError(`Error procesando el rango de fechas: ${error.message}`);
         }
     };
+
     //MANEJAR SELECCIÓN DE VARIABLES
     const toggleVariableSelection = (id: number) => {
         setSelectedVariables(prev => {
@@ -176,10 +176,21 @@ export default function Variables() {
                 <div className="w-full max-w-4xl bg-secundary rounded-2xl shadow-md overflow-hidden">
                     <div className="p-6 md:p-8">
                         <div className="mb-6">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h1 className="text-2xl md:text-xl font-bold text-white">Paso 2: Configuración de Variables</h1>
-                                    <p className="text-gray-300 text-sm mt-1">
+                            <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <button
+                                            onClick={handleGoBack}
+                                            className="px-3 py-2 bg-background-transparent hover:bg-background text-white rounded-lg flex items-center transition-colors"
+                                            title="Volver a Fuentes de Datos"
+                                        >
+                                            <ArrowLeft className="w-5 h-5" />
+                                        </button>
+                                        <h1 className="text-2xl md:text-xl font-bold text-white">
+                                            Paso 2: Configuración de Variables
+                                        </h1>
+                                    </div>
+                                    <p className="text-gray-300 text-sm mt-1 ml-14">
                                         Variables detectadas desde {protocol.toUpperCase()}
                                         {lastFetchTime && (
                                             <span className="text-gray-400 ml-2">
@@ -327,7 +338,7 @@ export default function Variables() {
                             </button>
                         </div>
 
-                        {/* Aquí va tu mensaje */}
+                        {/* Mensaje de advertencia */}
                         {dataSourceConfig.protocol === 'file' && !rangoFechasSeleccionado && (
                             <span className="text-xs text-red-400 block mt-2">
                                 Debes seleccionar el rango de fechas antes de continuar.

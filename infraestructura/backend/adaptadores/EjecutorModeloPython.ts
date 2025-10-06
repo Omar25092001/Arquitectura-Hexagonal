@@ -75,9 +75,7 @@ export class EjecutorModeloPython {
                 throw new Error(`Modelo '${nombreModelo}' no encontrado para el usuario '${usuarioId}'. Tipos buscados: predictivo, optimizacion, clasificacion`);
             }
 
-            console.log(`Tipo detectado: ${configuracion.tipo}`);
-            console.log(`Script a ejecutar: ${configuracion.script}`);
-
+        
             if (!fs.existsSync(configuracion.script)) {
                 throw new Error(`Script no encontrado: ${configuracion.script}`);
             }
@@ -91,7 +89,6 @@ export class EjecutorModeloPython {
                 comando += ` ${parametrosExtra.nPasos}`;
             }
 
-            console.log(`Comando a ejecutar: ${comando}`);
 
             const directorioTrabajo = path.dirname(configuracion.script);
             const { stdout, stderr } = await execPromise(comando, {
@@ -99,7 +96,6 @@ export class EjecutorModeloPython {
                 encoding: 'utf8'
             });
 
-            console.log('STDOUT:', stdout);
             if (stderr) {
                 console.log('STDERR:', stderr);
             }

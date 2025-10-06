@@ -4,7 +4,7 @@ import Header from '../components/Header';
 import { ejecutarAlgoritmo } from '@/Algoritmos/Index';
 import MonitorizacionVariables from '@/components/Ejecucion/MonitorizacionVariables'
 import DatosEnTiempoReal, { type DataPoint } from '../components/Ejecucion/DatosEntiempoReal';
-import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, Sun } from 'lucide-react';
+import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, Sun, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
     conectarMQTT,
@@ -167,6 +167,11 @@ export default function Ejecucion() {
         navigate('/usuario/fuente-datos');
     };
 
+    const handleGoBack = () => {
+        handlePauseSimulation();
+        navigate('/usuario/variables');
+    };
+
     const handleSelectData = (data: DataPoint) => {
         setSelectedData(data);
         setShowDataModal(true);
@@ -296,11 +301,20 @@ export default function Ejecucion() {
                     {/* Header de Ejecución */}
                     <div className="bg-secundary rounded-2xl shadow-md p-6">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                            <div>
-                                <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                                    Ejecución de la Simulación
-                                </h1>
-                                <p className="text-gray-300">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <button
+                                        onClick={handleGoBack}
+                                        className="px-3 py-2 bg-background-transparent hover:bg-background text-white rounded-lg flex items-center transition-colors"
+                                        title="Volver a Variables"
+                                    >
+                                        <ArrowLeft className="w-5 h-5" />
+                                    </button>
+                                    <h1 className="text-2xl md:text-3xl font-bold text-white">
+                                        Ejecución de la Simulación
+                                    </h1>
+                                </div>
+                                <p className="text-gray-300 ml-14">
                                     Controla y gestiona la ejecución de tu simulación configurada
                                 </p>
                             </div>

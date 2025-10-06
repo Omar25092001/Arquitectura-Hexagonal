@@ -11,7 +11,11 @@ import {EditarEstadoUsuario} from '../../aplicacion/CasosUsoUsuario/editarEstado
 import { ObtenerAlgoritmosUsuario } from "../../aplicacion/CasosUsoAlgoritmo/ObtenerAlgoritmosUsuario";
 import { EjecutarAlgoritmo } from "../../aplicacion/CasosUsoAlgoritmo/EjecutarAlgoritmo";
 import { EjecutorModeloPython } from "../../infraestructura/backend/adaptadores/EjecutorModeloPython";
+import {CrearEjecucion} from "../../aplicacion/CasosUsoEjecucionAlgoritmo/CrearEjecucion"
+import { ObtenerEjecuciones } from "../../aplicacion/CasosUsoEjecucionAlgoritmo/ObtenerEjecuciones"
+
 import { RepositorioClimaPrisma } from "../../infraestructura/backend/adaptadores/RepositorioClimaPrismaPostgre"
+import { RepositorioEjecucionAlgoritmoPrismaPostgre } from "../../infraestructura/backend/adaptadores/RepositorioEjecucionAlgoritmoPrismaPostgre"
 import { RepositorioUsuarioPrismaPostgre } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioPrismaPostgre"
 import { RepositorioUsuarioInflux } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioInflux"
 import { RepositorioAlgoritmoFileSystem } from "../../infraestructura/backend/adaptadores/RepositorioAlgoritmoFileSystem"
@@ -21,6 +25,7 @@ import {TokenJWT} from "../../infraestructura/backend/servicios/TokenJWT";
 
 const usuarioRepositorioPostgre = new RepositorioUsuarioPrismaPostgre; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
 const climaRepositorio = new RepositorioClimaPrisma; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
+const ejecucionRepositorio = new RepositorioEjecucionAlgoritmoPrismaPostgre; //Implementar el repositorio de ejecucion de algoritmo cuando se tenga claro la persistencia a utilizar
 const usuarioRepositorioInflux = new RepositorioUsuarioInflux; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
 const algoritmoRepositorio = new RepositorioAlgoritmoFileSystem; //podemos cambiar el repositorio, ya sea que se trabaje con bases de datos o en memoria sin cambiar el resto del codigo
 const servicioHasheo = new HasheBcrypt();
@@ -43,5 +48,9 @@ export const ServiceContainer = {
   algoritmo: {
     obtenerAlgoritmosUsuario: new ObtenerAlgoritmosUsuario(algoritmoRepositorio),
     ejecutarAlgoritmo: new EjecutarAlgoritmo(new EjecutorModeloPython())
+  },
+  ejecucionAlgoritmo: {
+    crearEjecucion: new CrearEjecucion(ejecucionRepositorio),
+    obtenerEjecuciones: new ObtenerEjecuciones(ejecucionRepositorio)
   }
 }

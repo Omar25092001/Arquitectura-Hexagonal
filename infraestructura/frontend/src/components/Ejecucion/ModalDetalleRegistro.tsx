@@ -1,6 +1,7 @@
 import { type DataPoint } from './DatosEntiempoReal';
 import { useEffect, useState } from 'react';
 import { obtenerAlgoritmos, ejecutarAlgoritmo } from '../../services/algoritmo.service';
+import { crearEjecucion } from '../../services/ejecucion.service';
 import ModalResultadosAlgoritmos from './ModalResultadosAlgoritmos';
 
 interface ModalDetalleRegistroProps {
@@ -102,6 +103,28 @@ const detectarTipoAlgoritmo = (algoritmo: Algoritmo): TipoAlgoritmo => {
     return 'predictivo'; // Valor por defecto
 };
 
+const extraerResultadosNumericos = (resultado: ResultadoAlgoritmo): number[] => {
+    try {
+        if (resultado.tipo === 'predictivo') {
+            return resultado.predicciones;
+        }
+
+        if (resultado.tipo === 'optimizacion') {
+            return resultado.optimizacion.valores_optimizados;
+        }
+
+        if (resultado.tipo === 'clasificacion') {
+            // Convertir probabilidades a array de números
+            return Object.values(resultado.clasificacion.probabilidades);
+        }
+
+        return [];
+    } catch (error) {
+        console.error('Error al extraer resultados:', error);
+        return [];
+    }
+};
+
 const obtenerNombreLimpio = (algoritmo: Algoritmo): string => {
     return algoritmo.nombre.replace(/^\[.*?\]\s*/, '');
 };
@@ -166,6 +189,7 @@ export default function ModalDetalleRegistro({
         setLoadingAlgoritmos(true);
         try {
             const response = await obtenerAlgoritmos(usuarioId);
+            console.log('Algoritmos cargados:', response.algoritmos);
             setAlgoritmos(response.algoritmos || []);
         } catch (error) {
             console.error('Error al cargar algoritmos:', error);
@@ -215,72 +239,105 @@ export default function ModalDetalleRegistro({
 
     // Función principal para ejecutar algoritmo
     // Función principal para ejecutar algoritmo
-const ejecutarAlgoritmoSeleccionado = async () => {
-    if (!selectedAlgorithm) {
-        setErrorEjecucion('Selecciona un algoritmo');
-        return;
-    }
-
-    const algoritmoSeleccionado = algoritmos.find(alg => alg.id === selectedAlgorithm);
-    if (!algoritmoSeleccionado) {
-        setErrorEjecucion('Algoritmo no encontrado');
-        return;
-    }
-
-    setEjecutando(true);
-    setResultadoAlgoritmo(null);
-    setErrorEjecucion('');
-
-    try {
-        const tipo = detectarTipoAlgoritmo(algoritmoSeleccionado);
-        const nombreLimpio = obtenerNombreLimpio(algoritmoSeleccionado);
-        
-        // ✅ Intentar obtener valores reales - puede lanzar error
-        let valoresParaAlgoritmo: number[];
-        try {
-            valoresParaAlgoritmo = obtenerValoresParaAlgoritmo();
-        } catch (error: any) {
-            // ❌ Error específico de datos
-            setErrorEjecucion(`Error con los datos: ${error.message}`);
+    const ejecutarAlgoritmoSeleccionado = async () => {
+        if (!selectedAlgorithm) {
+            setErrorEjecucion('Selecciona un algoritmo');
             return;
         }
 
-        // Construir payload según el tipo
-        let payload: any = {
-            usuarioId: usuarioId,
-            nombreModelo: nombreLimpio,
-            valores: valoresParaAlgoritmo
-        };
-
-        // Agregar parámetros específicos según el tipo
-        switch (tipo) {
-            case 'predictivo':
-                payload.nPasos = 7;
-                break;
-            case 'optimizacion':
-                payload.objetivo = 'maximizar';
-                payload.iteraciones = 100;
-                break;
-            case 'clasificacion':
-                payload.umbralConfianza = 0.8;
-                break;
+        const algoritmoSeleccionado = algoritmos.find(alg => alg.id === selectedAlgorithm);
+        if (!algoritmoSeleccionado) {
+            setErrorEjecucion('Algoritmo no encontrado');
+            return;
         }
 
-        const resultado = await ejecutarAlgoritmo(payload);
+        setEjecutando(true);
+        setResultadoAlgoritmo(null);
+        setErrorEjecucion('');
 
-        if (resultado.success) {
-            setResultadoAlgoritmo(resultado.data);
-        } else {
-            setErrorEjecucion(resultado.message || 'Error desconocido en la ejecución');
+        try {
+            const tipo = detectarTipoAlgoritmo(algoritmoSeleccionado);
+            const nombreLimpio = obtenerNombreLimpio(algoritmoSeleccionado);
+
+            // ✅ Intentar obtener valores reales - puede lanzar error
+            let valoresParaAlgoritmo: number[];
+            try {
+                valoresParaAlgoritmo = obtenerValoresParaAlgoritmo();
+            } catch (error: any) {
+                // ❌ Error específico de datos
+                setErrorEjecucion(`Error con los datos: ${error.message}`);
+                return;
+            }
+
+            // Construir payload según el tipo
+            let payload: any = {
+                usuarioId: usuarioId,
+                nombreModelo: nombreLimpio,
+                valores: valoresParaAlgoritmo
+            };
+
+            // Agregar parámetros específicos según el tipo
+            switch (tipo) {
+                case 'predictivo':
+                    payload.nPasos = 7;
+                    break;
+                case 'optimizacion':
+                    payload.objetivo = 'maximizar';
+                    payload.iteraciones = 100;
+                    break;
+                case 'clasificacion':
+                    payload.umbralConfianza = 0.8;
+                    break;
+            }
+
+            // ✅ EJECUTAR ALGORITMO
+            const resultado = await ejecutarAlgoritmo(payload);
+
+            // ✅ SI LA RESPUESTA ES EXITOSA, GUARDAR Y MOSTRAR RESULTADO
+            if (resultado.success) {
+                const resultadoData = resultado.data;
+
+                // Mostrar resultado primero
+                setResultadoAlgoritmo(resultadoData);
+
+                // ✅ GUARDAR EJECUCIÓN AUTOMÁTICAMENTE EN SEGUNDO PLANO
+                try {
+                    const resultadosNumericos = extraerResultadosNumericos(resultadoData);
+
+                    const datosParaGuardar = {
+                        id: crypto.randomUUID(),
+                        usuarioId: usuarioId,
+                        nombreAlgoritmo: nombreLimpio,
+                        tipoAlgoritmo: tipo,
+                        valoresEntrada: valoresParaAlgoritmo,
+                        variableSeleccionada: selectedData?._nombreColumnaSeleccionada || 'variable_desconocida',
+                        fechaEjecucion: new Date().toISOString(),
+                        resultado: resultadosNumericos,
+                        tiempoEjecucion: (resultadoData as any).tiempo_ejecucion || 1.0
+                    };
+
+                    // Guardar en BD
+                    await crearEjecucion(datosParaGuardar);
+                    console.log('✅ Ejecución guardada automáticamente:', datosParaGuardar.id);
+
+                } catch (errorGuardado: any) {
+                    // ⚠️ Si falla el guardado, solo loguear (no afecta al usuario)
+                    console.error('⚠️ Error al guardar ejecución (resultado mostrado correctamente):', errorGuardado);
+                }
+
+            } else {
+                // ❌ Si el algoritmo no fue exitoso, mostrar error
+                setErrorEjecucion(resultado.message || 'Error desconocido en la ejecución');
+            }
+
+        } catch (error: any) {
+            // ❌ Error en la petición o ejecución
+            const errorMsg = error.response?.data?.message || error.message || 'Error al ejecutar el algoritmo';
+            setErrorEjecucion(errorMsg);
+        } finally {
+            setEjecutando(false);
         }
-
-    } catch (error: any) {
-        const errorMsg = error.response?.data?.message || error.message || 'Error al ejecutar el algoritmo';
-        setErrorEjecucion(errorMsg);
-    } finally {
-        setEjecutando(false);
-    }
-};
+    };
 
     // Renderizar opciones de algoritmos con iconos
     const renderAlgorithmOptions = () => {

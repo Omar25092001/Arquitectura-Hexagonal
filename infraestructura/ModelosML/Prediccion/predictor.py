@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 import json
+import time  # ← AGREGAR ESTE IMPORT
 
 def buscar_modelo_predictivo(id_usuario, nombre_modelo):
     """Busca un modelo predictivo específico"""
@@ -75,6 +76,9 @@ def predecir_multiples(modelo, valores, n_pasos=7):
     return predicciones
 
 if __name__ == "__main__":
+    # ⏱️ INICIAR CRONÓMETRO AL INICIO DEL PROGRAMA
+    tiempo_inicio = time.time()
+    
     try:
         if len(sys.argv) < 4:
             raise Exception("Faltan argumentos: usuarioId, nombreModelo y valores")
@@ -104,24 +108,34 @@ if __name__ == "__main__":
         # Hacer predicciones (siempre 7)
         predicciones = predecir_multiples(modelo, valores, n_pasos)
         
-        # Resultado exitoso
+        # ⏱️ CALCULAR TIEMPO TRANSCURRIDO
+        tiempo_fin = time.time()
+        tiempo_ejecucion = round(tiempo_fin - tiempo_inicio, 4)  # 4 decimales
+        
+        # ✅ Resultado exitoso CON TIEMPO REAL
         resultado = {
             "success": True,
             "tipo": "predictivo",
             "usuario_id": usuario_id,
             "nombre_modelo": nombre_modelo,
             "predicciones": predicciones,
+            "tiempo_ejecucion": tiempo_ejecucion,  # ← AGREGAR TIEMPO REAL
             "n_pasos": n_pasos,
             "valores_entrada": valores
         }
         print(json.dumps(resultado))
         
     except Exception as e:
-        # Resultado con error
+        # ⏱️ CALCULAR TIEMPO INCLUSO EN ERROR
+        tiempo_fin = time.time()
+        tiempo_ejecucion = round(tiempo_fin - tiempo_inicio, 4)
+        
+        # ❌ Resultado con error Y TIEMPO
         resultado = {
             "success": False,
             "tipo": "predictivo",
             "error": str(e),
+            "tiempo_ejecucion": tiempo_ejecucion,  # ← AGREGAR TIEMPO INCLUSO EN ERROR
             "usuario_id": usuario_id if 'usuario_id' in locals() else None,
             "nombre_modelo": nombre_modelo if 'nombre_modelo' in locals() else None
         }

@@ -7,22 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Clima {
-  id           Int      @id @default(autoincrement()) 
-  ciudad       String
-  temperatura  Float
-  humedad      Float
-  velocidadViento Float
-  estado       String
-  createdAt    DateTime @default(now())
+model Usuario {
+  id                 String   @id @default(uuid())
+  nombre            String
+  correo            String   @unique
+  estado            Boolean  @default(true)
+  contrasena        String
+  fechaCreacion     DateTime @default(now())
+  fechaActualizacion DateTime @updatedAt
+  
+  // Relación con ejecuciones
+  ejecuciones       EjecucionAlgoritmo[]
 }
 
-model Usuario {
-  id               String   @id @default(uuid())
-  nombre      String
-  correo      String   @unique
-  estado Boolean @default(true)
-  contrasena  String
-  fechaCreacion DateTime @default(now())
-  fechaActualizacion DateTime @updatedAt
+model EjecucionAlgoritmo {
+  id                    String    @id @default(uuid())
+  usuarioId             String
+  nombreAlgoritmo       String
+  tipoAlgoritmo         String    // 'predictivo', 'optimizacion', 'clasificacion'
+  valoresEntrada        String    // JSON
+  variableSeleccionada  String
+  resultado             String    // JSON - SIEMPRE tiene valor (no nullable)
+  fechaEjecucion        DateTime  @default(now())
+  tiempoEjecucion       Float     // En segundos - SIEMPRE tiene valor (no nullable)
+  
+  // Relación con usuario
+  usuario               Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  // Índices para optimizar consultas
+  @@index([usuarioId, fechaEjecucion(sort: Desc)])
+  @@index([tipoAlgoritmo])
+  @@map("ejecucion_algoritmo")
 }
