@@ -8,168 +8,141 @@ interface ConfigWebSocketProps {
 }
 
 const ConfigWebSocket = ({ onConnectionStateChange, onConfigChange }: ConfigWebSocketProps) => {
-
     const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
-
-    //Configuración y prueba de conexión WebSocket
-    const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-    const [connectionMessage, setConnectionMessage] = useState('');
 
     const [config, setConfig] = useState({
         url: '',
-        token: '',
-        useToken: false
+        port: '8080',
+        path: ''
     });
 
-    const camposObligatoriosCompletos = () => {
-        return config.url.trim() !== '';
-    };
+    const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+    const [connectionMessage, setConnectionMessage] = useState('');
 
-    const probarConexionWebSocket = () => {
-        setConnectionState('testing');
-        onConnectionStateChange?.('testing');
-        setConnectionMessage('Probando conexión WebSocket...');
-
-        const wsPattern = /^wss?:\/\/.+/i;
-        const isValidUrl = wsPattern.test(config.url);
-
-        if (!isValidUrl) {
-            setConnectionState('error');
-            onConnectionStateChange?.('error');
-            setConnectionMessage('Error: URL de WebSocket inválida. Debe comenzar con ws:// o wss://');
-            return;
-        }
-
-        // Intentar conexión real
-        try {
-            const ws = new WebSocket(config.url);
-            
-            // Si usas token, puedes enviarlo como header (solo en backend) o como mensaje tras conectar
-            ws.onopen = () => {
-                console.log('Conexión WebSocket abierta');
-                setConnectionState('success');
-                onConnectionStateChange?.('success');
-                setConnectionMessage('Conexión WebSocket exitosa. El socket está listo para comunicación bidireccional.');
-                // Si necesitas enviar un token tras conectar:
-                if (config.useToken && config.token) {
-                    ws.send(JSON.stringify({ token: config.token }));
-                }
-                ws.close(); // Cierra la conexión de prueba
-            };
-
-            ws.onerror = () => {
-                setConnectionState('error');
-                onConnectionStateChange?.('error');
-                setConnectionMessage('Error: No se pudo conectar al WebSocket.');
-            };
-
-
-        } catch (err) {
-            setConnectionState('error');
-            onConnectionStateChange?.('error');
-            setConnectionMessage('Error: No se pudo crear la conexión WebSocket.');
-        }
-
-
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         const newConfig = {
             ...config,
             [name]: value
         };
         setConfig(newConfig);
-        
-        // 👈 ENVIAR CONFIGURACIÓN AL PADRE INMEDIATAMENTE
-        console.log('📝 Enviando config WebSocket:', newConfig);
         onConfigChange?.(newConfig);
     };
 
-    // 👈 MANEJAR CAMBIOS EN CHECKBOX
-    const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, checked } = e.target;
-        const newConfig = {
-            ...config,
-            [name]: checked
-        };
-        setConfig(newConfig);
-        
-        // 👈 ENVIAR CONFIGURACIÓN AL PADRE INMEDIATAMENTE
-        console.log('📝 Enviando config WebSocket (checkbox):', newConfig);
-        onConfigChange?.(newConfig);
+    const camposObligatoriosCompletos = () => {
+        return config.url.trim() !== '' && config.port.trim() !== '';
+    };
+
+    const probarConexionWebSocket = () => {
+        setConnectionState('testing');
+        onConnectionStateChange?.('testing');
+        setConnectionMessage('Conectando al servidor WebSocket...');
+
+        const wsUrl = `ws://${config.url}:${config.port}${config.path}`;
+        console.log('🔍 Intentando conectar a WebSocket:', wsUrl);
+
+        let ws: WebSocket;
+
+        try {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('✅ Conexión WebSocket exitosa');
+                setConnectionState('success');
+                onConnectionStateChange?.('success');
+                setConnectionMessage('Conexión exitosa al servidor WebSocket');
+                
+                setTimeout(() => {
+                    ws.close();
+                }, 2000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('❌ Error de conexión WebSocket:', error);
+                setConnectionState('error');
+                onConnectionStateChange?.('error');
+                setConnectionMessage('Error: No se pudo conectar al servidor WebSocket. Verifica la URL y el puerto.');
+            };
+
+            ws.onclose = () => {
+                console.log('🔌 Conexión WebSocket cerrada');
+            };
+
+        } catch (error: any) {
+            console.error('❌ Error al crear WebSocket:', error);
+            setConnectionState('error');
+            onConnectionStateChange?.('error');
+            setConnectionMessage(`Error: ${error.message}`);
+        }
     };
 
     return (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <div className="flex items-center mb-1">
-                    <label htmlFor="url" className="block text-sm font-medium text-white">
-                        URL del WebSocket
-                    </label>
-                    <button
-                        type="button"
-                        onClick={() => setMostrarModalFormato(true)}
-                        className="ml-2 text-gray-400 hover:text-orange-400 transition-colors"
-                        title="Ver formato de datos esperado"
-                    >
-                        <HelpCircle className="w-4 h-4" />
-                    </button>
-                </div>
+                <label htmlFor="url" className="block text-sm font-medium text-white mb-1">
+                    URL del Servidor
+                </label>
                 <input
                     id="url"
                     name="url"
                     type="text"
-                    placeholder="wss://example.com/ws"
+                    placeholder="localhost o 192.168.1.100"
                     value={config.url}
                     onChange={handleChange}
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
-                <p className="text-xs text-gray-400 mt-1">
-                    Usa wss:// para conexiones seguras (recomendado) o ws:// para conexiones no seguras
-                </p>
             </div>
 
-            <div className="flex items-center">
-                <input
-                    id="useToken"
-                    name="useToken"
-                    type="checkbox"
-                    checked={config.useToken}
-                    onChange={handleCheckboxChange}
-                    className="h-4 w-4 text-orange-400 border-background rounded focus:ring-orange-400"
-                />
-                <label htmlFor="useToken" className="ml-2 text-sm font-medium text-white">
-                    Usar token de autenticación
+            <div>
+                <label htmlFor="port" className="block text-sm font-medium text-white mb-1">
+                    Puerto
                 </label>
+                <input
+                    id="port"
+                    name="port"
+                    type="text"
+                    placeholder="8080"
+                    value={config.port}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
             </div>
 
-            {config.useToken && (
-                <div>
-                    <label htmlFor="token" className="block text-sm font-medium text-white mb-1">
-                        Token
+            <div>
+                <div className="flex items-center mb-1">
+                    <label htmlFor="path" className="block text-sm font-medium text-white">
+                        Path (opcional)
                     </label>
-                    <input
-                        id="token"
-                        name="token"
-                        type="text"
-                        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                        value={config.token}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
-                    />
+                    <button
+                        type="button"
+                        onClick={() => setMostrarModalFormato(true)}
+                        className="ml-2 text-orange-400 hover:text-orange-300 transition-all duration-300 relative group tutorial-format-button"
+                        title="Ver formato de mensaje esperado"
+                    >
+                        <HelpCircle className="w-4 h-4 animate-pulse" />
+                        <span className="absolute inset-0 rounded-full bg-orange-400 opacity-0 group-hover:opacity-30 animate-ping"></span>
+                    </button>
                 </div>
-            )}
-            {/* Botón y estado de conexión con círculo indicador */}
+                <input
+                    id="path"
+                    name="path"
+                    type="text"
+                    placeholder="/ws"
+                    value={config.path}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+            </div>
+
             <div className="mt-6 flex items-center flex-wrap gap-3">
                 <button
                     onClick={probarConexionWebSocket}
                     disabled={connectionState === 'testing' || !camposObligatoriosCompletos()}
-                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors
-                    ${connectionState === 'testing' || !camposObligatoriosCompletos()
+                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors tutorial-test-button
+                        ${connectionState === 'testing' || !camposObligatoriosCompletos()
                             ? 'bg-gray-600 cursor-not-allowed'
                             : 'bg-orange-400 hover:bg-orange-500'}`}
-                    title={!camposObligatoriosCompletos() ? 'Complete la URL para continuar' : ''}
+                    title={!camposObligatoriosCompletos() ? 'Complete URL y Puerto para continuar' : ''}
                 >
                     {connectionState === 'testing' && (
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -177,7 +150,6 @@ const ConfigWebSocket = ({ onConnectionStateChange, onConfigChange }: ConfigWebS
                     Probar Conexión
                 </button>
 
-                {/* Círculo indicador de estado */}
                 {connectionState === 'success' && (
                     <div className="flex items-center">
                         <div className="h-4 w-4 rounded-full bg-green-500 shadow-lg"></div>
@@ -193,7 +165,6 @@ const ConfigWebSocket = ({ onConnectionStateChange, onConfigChange }: ConfigWebS
                 )}
             </div>
 
-            {/* Panel con detalles del estado */}
             {connectionState !== 'idle' && (
                 <div className={`mt-3 p-3 rounded-lg flex items-start
                     ${connectionState === 'testing' ? 'bg-gray-700 bg-opacity-70' : ''}
@@ -204,19 +175,18 @@ const ConfigWebSocket = ({ onConnectionStateChange, onConfigChange }: ConfigWebS
                     {connectionState === 'success' && <CheckCircle className="w-5 h-5 mr-2 text-green-400" />}
                     {connectionState === 'error' && <XCircle className="w-5 h-5 mr-2 text-red-400" />}
                     <span className={`text-sm ${connectionState === 'success' ? 'text-green-400' :
-                        connectionState === 'error' ? 'text-red-400' : 'text-gray-300'
+                            connectionState === 'error' ? 'text-red-400' : 'text-gray-300'
                         }`}>
                         {connectionMessage}
                     </span>
                 </div>
             )}
-            <FormatoWebSocket 
-                isOpen={mostrarModalFormato} 
-                onClose={() => setMostrarModalFormato(false)} 
+
+            <FormatoWebSocket
+                isOpen={mostrarModalFormato}
+                onClose={() => setMostrarModalFormato(false)}
             />
         </div>
-
-
     );
 };
 

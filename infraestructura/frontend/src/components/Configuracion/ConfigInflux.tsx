@@ -12,7 +12,7 @@ interface ConfigInfluxProps {
 const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxProps) => {
 
     const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
-    
+
     // Configuración y prueba de conexión InfluxDB
     const [influxConfig, setInfluxConfig] = useState({
         url: '',
@@ -118,7 +118,7 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
 
                 rows.forEach(row => {
                     const { _measurement, _field } = row as { _measurement: string; _field: string };
-                    
+
                     if (!_measurement || !_field) return;
 
                     if (!measurementMap.has(_measurement)) {
@@ -242,20 +242,21 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
                 </div>
 
                 <div>
-                    <div className="flex items-center space-x-2 mb-1">
-                    <label htmlFor="bucket" className="block text-sm font-medium text-white mb-1">
-                        Bucket
-                    </label>
-                    <button
+                    <div className="flex items-center mb-1">
+                        <label htmlFor="bucket" className="block text-sm font-medium text-white">
+                            Bucket
+                        </label>
+                        <button
                             type="button"
                             onClick={() => setMostrarModalFormato(true)}
-                            className="ml-2 text-gray-400 hover:text-orange-400 transition-colors"
+                            className="ml-2 text-orange-400 hover:text-orange-300 transition-all duration-300 relative group tutorial-format-button"
                             title="Ver formato de datos esperado"
                         >
-                            <HelpCircle className="w-4 h-4" />
+                            <HelpCircle className="w-4 h-4 animate-pulse" />
+                            <span className="absolute inset-0 rounded-full bg-orange-400 opacity-0 group-hover:opacity-30 animate-ping"></span>
                         </button>
                     </div>
-                    
+
                     <input
                         id="bucket"
                         name="bucket"
@@ -286,7 +287,7 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
                         </label>
                     </div>
                     <p className="text-xs text-gray-400 mb-3">
-                        <strong>Marcado:</strong> Se usará un measurement específico para filtrar datos.<br/>
+                        <strong>Marcado:</strong> Se usará un measurement específico para filtrar datos.<br />
                         <strong>Desmarcado:</strong> Se leerán todas las variables disponibles en el bucket.
                     </p>
                 </div>
@@ -313,14 +314,14 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
                 )}
             </div>
 
-        
+
 
             {/* Botón y estado de conexión */}
             <div className="mt-6 mb-4 flex flex-wrap items-start gap-3">
                 <button
                     onClick={probarConexionInflux}
                     disabled={connectionState === 'testing'}
-                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center 
+                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center tutorial-test-button
                     ${connectionState === 'testing'
                             ? 'bg-gray-600 cursor-not-allowed'
                             : 'bg-orange-400 hover:bg-orange-500'}`}
@@ -366,8 +367,8 @@ const ConfigInflux = ({ onConnectionStateChange, onConfigChange }: ConfigInfluxP
                 )}
             </div>
             <FormatoInflux
-                isOpen={mostrarModalFormato} 
-                onClose={() => setMostrarModalFormato(false)} 
+                isOpen={mostrarModalFormato}
+                onClose={() => setMostrarModalFormato(false)}
             />
         </div>
     );

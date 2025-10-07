@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useUserStore } from '@/store/user.store';
 import Header from '../components/Header';
-import { ejecutarAlgoritmo } from '@/Algoritmos/Index';
 import MonitorizacionVariables from '@/components/Ejecucion/MonitorizacionVariables'
 import DatosEnTiempoReal, { type DataPoint } from '../components/Ejecucion/DatosEntiempoReal';
 import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, Sun, ArrowLeft } from 'lucide-react';
@@ -184,7 +183,6 @@ export default function Ejecucion() {
         }
 
         setIsProcessingAlgorithm(true);
-        const startTime = Date.now();
 
         try {
             const idx = liveData.findIndex(d => d === selectedData);
@@ -200,12 +198,7 @@ export default function Ejecucion() {
                 // Desde el seleccionado hasta el final
                 datosSeleccionados = liveData.slice(idx);
                 rangeDescription = `Desde el registro ${idx + 1} hasta el final (${datosSeleccionados.length} registros)`;
-            } else {
-                // Solo el dato actual
-                datosSeleccionados = [selectedData];
-                rangeDescription = `Solo el registro ${idx + 1} (1 registro)`;
-            }
-
+            } 
             // Obtener variables disponibles (excluir timestamp)
             const variables = Object.keys(datosSeleccionados[0] || {}).filter(key => key !== 'timestamp');
 
@@ -214,30 +207,10 @@ export default function Ejecucion() {
                 return;
             }
 
-            // Ejecutar algoritmo usando la función de los archivos separados
-            const algorithmId = direccion === 'actual' && selectedAlgorithm === 'prediccion1' ? 'persistencia' : selectedAlgorithm;
-            const predictions = ejecutarAlgoritmo(algorithmId, datosSeleccionados, variables);
-
-            const executionTime = Date.now() - startTime;
-
-            // Crear resultado del algoritmo
-            const result = {
-                algorithm: algorithmId === 'prediccion1' ? 'Regresión Lineal' :
-                    algorithmId === 'prediccion2' ? 'Media Móvil' : 'Persistencia',
-                input: datosSeleccionados,
-                predictions: predictions,
-                summary: {
-                    totalRecords: datosSeleccionados.length,
-                    variables: variables,
-                    range: rangeDescription,
-                    executionTime: executionTime
-                }
-            };
 
             // Cerrar modal de selección y abrir modal de resultados
             setShowDataModal(false);
 
-            console.log('Algoritmo ejecutado exitosamente:', result);
 
         } catch (error: any) {
             console.error(' Error ejecutando algoritmo:', error);

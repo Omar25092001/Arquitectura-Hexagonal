@@ -7,12 +7,9 @@ interface ConfigHTTPProps {
     onConfigChange?: (config: any) => void;
 }
 
-
 const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps) => {
-
     const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
 
-    //Consfiguración y prueba de conexión HTTP
     const [config, setConfig] = useState({
         url: '',
         endpoint: '',
@@ -31,7 +28,7 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
             [name]: value
         };
         setConfig(newConfig);
-        
+
         onConfigChange?.(newConfig);
     };
 
@@ -44,7 +41,6 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
         onConnectionStateChange?.('testing');
         setConnectionMessage('Probando conexión...');
 
-        // CONSTRUIR URL COMPLETA
         const urlCompleta = config.url + config.endpoint;
 
         try {
@@ -52,7 +48,7 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                 method: config.method,
                 headers: {}
             };
-            // AGREGAR AUTENTICACIÓN SI SE PROPORCIONA
+
             if (config.password) {
                 requestOptions.headers = {
                     'Authorization': `Bearer ${config.password}`,
@@ -69,26 +65,24 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
             const response = await fetch(urlCompleta, requestOptions);
             if (response.ok) {
                 const contentType = response.headers.get('content-type') || '';
-                
-                
+
                 setConnectionState('success');
                 onConnectionStateChange?.('success');
                 setConnectionMessage(`Conexión exitosa. Servidor respondió con ${response.status}. Content-Type: ${contentType}`);
-                
-                // GUARDAR CONFIGURACIÓN COMPLETA AL CONECTAR EXITOSAMENTE
+
                 const configCompleta = {
                     ...config,
-                    url: urlCompleta, // Guardar URL completa
+                    url: urlCompleta,
                     headers: requestOptions.headers
                 };
                 console.log('📝 Actualizando configuración http:', configCompleta);
                 onConfigChange?.(configCompleta);
-                
+
             } else {
                 setConnectionState('error');
                 onConnectionStateChange?.('error');
                 setConnectionMessage(`Error: El servidor respondió con código ${response.status} - ${response.statusText}`);
-                
+
                 console.error('Error HTTP:', {
                     status: response.status,
                     statusText: response.statusText
@@ -98,11 +92,10 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
             setConnectionState('error');
             onConnectionStateChange?.('error');
             setConnectionMessage('Error: No se pudo establecer la conexión. ' + error.message);
-            
+
             console.error('Error de conexión:', error);
         }
     };
-
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -129,10 +122,11 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                     <button
                         type="button"
                         onClick={() => setMostrarModalFormato(true)}
-                        className="ml-2 text-gray-400 hover:text-orange-400 transition-colors"
+                        className="ml-2 text-orange-400 hover:text-orange-300 transition-all duration-300 relative group tutorial-format-button"
                         title="Ver formato de respuesta esperado"
                     >
-                        <HelpCircle className="w-4 h-4" />
+                        <HelpCircle className="w-4 h-4 animate-pulse" />
+                        <span className="absolute inset-0 rounded-full bg-orange-400 opacity-0 group-hover:opacity-30 animate-ping"></span>
                     </button>
                 </div>
                 <input
@@ -145,7 +139,6 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
             </div>
-
             <div>
                 <label htmlFor="method" className="block text-sm font-medium text-white mb-1">
                     Método HTTP
@@ -154,7 +147,6 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                     GET (Por defecto)
                 </h2>
             </div>
-
 
             <div>
                 <label htmlFor="password" className="block text-sm font-medium text-white mb-1">
@@ -170,13 +162,13 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
             </div>
-            {/* Botón y estado de conexión con círculo indicador */}
+
             <div className="mt-6 flex items-center flex-wrap gap-3">
                 <button
                     onClick={probarConexionHttp}
                     disabled={connectionState === 'testing' || !camposObligatoriosCompletos()}
-                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors
-                    ${connectionState === 'testing' || !camposObligatoriosCompletos()
+                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors tutorial-test-button
+        ${connectionState === 'testing' || !camposObligatoriosCompletos()
                             ? 'bg-gray-600 cursor-not-allowed'
                             : 'bg-orange-400 hover:bg-orange-500'}`}
                     title={!camposObligatoriosCompletos() ? 'Complete URL y Endpoint para continuar' : ''}
@@ -187,7 +179,6 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                     Probar Conexión
                 </button>
 
-                {/* Círculo indicador de estado */}
                 {connectionState === 'success' && (
                     <div className="flex items-center">
                         <div className="h-4 w-4 rounded-full bg-green-500 shadow-lg"></div>
@@ -203,7 +194,6 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                 )}
             </div>
 
-            {/* Panel con detalles del estado */}
             {connectionState !== 'idle' && (
                 <div className={`mt-3 p-3 rounded-lg flex items-start
                     ${connectionState === 'testing' ? 'bg-gray-700 bg-opacity-70' : ''}
@@ -214,18 +204,18 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                     {connectionState === 'success' && <CheckCircle className="w-5 h-5 mr-2 text-green-400" />}
                     {connectionState === 'error' && <XCircle className="w-5 h-5 mr-2 text-red-400" />}
                     <span className={`text-sm ${connectionState === 'success' ? 'text-green-400' :
-                            connectionState === 'error' ? 'text-red-400' : 'text-gray-300'
+                        connectionState === 'error' ? 'text-red-400' : 'text-gray-300'
                         }`}>
                         {connectionMessage}
                     </span>
                 </div>
             )}
+
             <FormatoHTTP
                 isOpen={mostrarModalFormato}
                 onClose={() => setMostrarModalFormato(false)}
             />
         </div>
-
     );
 };
 

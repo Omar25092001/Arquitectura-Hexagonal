@@ -23,7 +23,6 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
 
     const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [connectionMessage, setConnectionMessage] = useState('');
-    const [availableSheets, setAvailableSheets] = useState<string[]>([]);
     const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
     const { setExcelFile } = useExcelFileSection();
 
@@ -46,7 +45,6 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
 
             setConnectionState('idle');
             setConnectionMessage('');
-            setAvailableSheets([]);
 
             const configCompleta = {
                 file: file,
@@ -85,7 +83,6 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
 
             // Obtener nombres de las hojas
             const sheetNames = workbook.worksheets.map(ws => ws.name);
-            setAvailableSheets(sheetNames);
 
             console.log('Hojas disponibles:', sheetNames);
 
@@ -185,22 +182,25 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
             {/* Selector de archivo */}
             <div className="border-2 border-dashed border-background rounded-lg p-6 flex flex-col items-center">
                 <FileSpreadsheet className="w-12 h-12 text-orange-400 mb-4" />
-                <div className="flex items-center space-x-2 mb-2 ">
-                    <h3 className="text-lg font-medium text-white mb-2">Selecciona un archivo Excel</h3>
+                
+                <div className="flex items-center mb-2">
+                    <h3 className="text-sm font-medium text-white">Selecciona tu archivo Excel</h3>
                     <button
                         type="button"
                         onClick={() => setMostrarModalFormato(true)}
-                        className="text-gray-400 hover:text-orange-400 transition-colors"
+                        className="ml-2 text-orange-400 hover:text-orange-300 transition-all duration-300 relative group tutorial-format-button"
                         title="Ver formato de archivo esperado"
                     >
-                        <HelpCircle className="w-6 h-6" />
+                        <HelpCircle className="w-4 h-4 animate-pulse" />
+                        <span className="absolute inset-0 rounded-full bg-orange-400 opacity-0 group-hover:opacity-30 animate-ping"></span>
                     </button>
                 </div>
+
                 <p className="text-sm text-gray-400 mb-4 text-center">
                     Formatos compatibles: Excel (.xlsx, .xls)
                 </p>
 
-                <label className="bg-orange-400 text-white px-4 py-2 rounded-lg flex items-center cursor-pointer hover:bg-orange-500 transition-colors">
+                <label className="bg-orange-400 text-white px-4 py-2 rounded-lg flex items-center cursor-pointer hover:bg-orange-500 transition-colors tutorial-test-button">
                     <Upload className="w-5 h-5 mr-2" />
                     Seleccionar archivo
                     <input
@@ -289,8 +289,6 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
                             </div>
                         )}
                     </div>
-
-
                 </div>
             )}
 
@@ -299,7 +297,7 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
                 <button
                     onClick={testConnection}
                     disabled={connectionState === 'testing' || !selectedFile}
-                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center 
+                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center tutorial-test-button
                     ${connectionState === 'testing'
                             ? 'bg-gray-600 cursor-not-allowed'
                             : !selectedFile
@@ -349,6 +347,7 @@ const ConfigExcel = ({ onConnectionStateChange, onConfigChange }: ConfigExcelPro
                     </div>
                 )}
             </div>
+
             <FormatoExcel
                 isOpen={mostrarModalFormato}
                 onClose={() => setMostrarModalFormato(false)}
