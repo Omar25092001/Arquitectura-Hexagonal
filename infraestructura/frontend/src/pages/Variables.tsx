@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import SeleccionarRangoFecha from '@/utils/SeleccionarRangoFecha';
-import { CheckCircle, ArrowRight, Check, X, RefreshCw, ArrowLeft } from 'lucide-react';
+import { CheckCircle, ArrowRight, Check, X, RefreshCw, ArrowLeft, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ModalProtocolos from '../components/Variables/ModalProtocolos';
 import { useExcelFileSection } from "@/components/shared/ExcelFileSectionContext";
+import { useTutorial } from '../components/Tutorial/TutorialContext'; // ✅ AÑADIR
+import { TutorialVariables } from '../components/Tutorial/TutorialVariables'; // ✅ AÑADIR
 
 import {
     detectarVariablesMQTT,
@@ -16,6 +18,7 @@ import {
 
 export default function Variables() {
     const navigate = useNavigate();
+    const { startTutorial } = useTutorial(); // ✅ AÑADIR
 
     const [dataSourceConfig, setDataSourceConfig] = useState<any>(null);
     const [variables, setVariables] = useState<any[]>([]);
@@ -38,9 +41,22 @@ export default function Variables() {
         { id: 3, title: 'Ejecución', active: false }
     ];
 
+    useEffect(() => {
+        if (dataSourceConfig) {
+            handleDetectarVariables();
+        }
+    }, [dataSourceConfig]);
+
+    useEffect(() => {
+            const primeraVez = localStorage.getItem('tutorialPrimeraVez');
+            if (primeraVez === 'true') {
+                startTutorial(TutorialVariables); // O el tutorial correspondiente
+            }
+        }, []);
+    
+
     const handleSiguientePaso = () => {
         if (selectedVariables.length === 0) return;
-        // Guardar variables seleccionadas en localStorage
         localStorage.setItem('selectedVariables', JSON.stringify(variables.filter(v => selectedVariables.includes(v.id))));
         navigate('/usuario/ejecucion');
     }
@@ -63,6 +79,11 @@ export default function Variables() {
         navigate('/usuario/fuente-datos');
     };
 
+    // ✅ AÑADIR FUNCIÓN PARA INICIAR TUTORIAL
+    const handleStartTutorial = () => {
+        startTutorial(TutorialVariables);
+    };
+
     // Cargar configuración
     useEffect(() => {
         const savedConfig = localStorage.getItem('dataSourceConfig');
@@ -80,7 +101,6 @@ export default function Variables() {
 
         setDataSourceConfig(config);
     }, [navigate]);
-
 
     const handleDetectarVariables = async () => {
         setIsLoading(true);
@@ -109,7 +129,6 @@ export default function Variables() {
             setIsLoading(false);
         }
     };
-
 
     const handleDateRangeSelected = async (rangeData: any) => {
         try {
@@ -155,7 +174,7 @@ export default function Variables() {
             <Header />
             <div className="flex-grow flex flex-col items-center justify-center px-4">
                 {/* Pasos de navegación */}
-                <div className="flex flex-wrap space-x-2 md:space-x-4 mb-6 overflow-x-auto pb-2">
+                <div className="tutorial-steps flex flex-wrap space-x-2 md:space-x-4 mb-6 overflow-x-auto pb-2">
                     {steps.map((step) => (
                         <div
                             key={step.id}
@@ -171,6 +190,15 @@ export default function Variables() {
                             <span className="whitespace-nowrap">{step.title}</span>
                         </div>
                     ))}
+                    {/* BOTÓN PARA MOSTRAR TUTORIAL */}
+                    <button
+                        onClick={handleStartTutorial}
+                        className="flex items-center text-orange-400 hover:text-orange-300 transition-colors ml-auto"
+                        title="Ver tutorial"
+                    >
+                        <HelpCircle className="w-5 h-5 mr-1" />
+                        <span className="text-sm">Tutorial</span>
+                    </button>
                 </div>
 
                 <div className="w-full max-w-4xl bg-secundary rounded-2xl shadow-md overflow-hidden">
@@ -180,8 +208,8 @@ export default function Variables() {
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
                                         <button
+                                            className="tutorial-back-button px-3 py-2 bg-background-transparent hover:bg-background text-white rounded-lg flex items-center transition-colors"
                                             onClick={handleGoBack}
-                                            className="px-3 py-2 bg-background-transparent hover:bg-background text-white rounded-lg flex items-center transition-colors"
                                             title="Volver a Fuentes de Datos"
                                         >
                                             <ArrowLeft className="w-5 h-5" />
@@ -200,15 +228,17 @@ export default function Variables() {
                                     </p>
                                 </div>
 
-                                {/*  BOTÓN PARA REFRESCAR VARIABLES */}
-                                <button
-                                    onClick={handleDetectarVariables}
-                                    disabled={isLoading}
-                                    className="flex items-center px-3 py-2 bg-orange-400 hover:bg-orange-500 disabled:bg-gray-600 text-white rounded-lg text-sm transition-colors"
-                                >
-                                    <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                                    {isLoading ? 'Detectando...' : 'Refrescar'}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {/*  BOTÓN PARA REFRESCAR VARIABLES */}
+                                    <button
+                                        className="tutorial-refresh-button flex items-center px-3 py-2 bg-orange-400 hover:bg-orange-500 disabled:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+                                        onClick={handleDetectarVariables}
+                                        disabled={isLoading}
+                                    >
+                                        <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                                        {isLoading ? 'Detectando...' : 'Refrescar'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -252,7 +282,7 @@ export default function Variables() {
                                 ) : (
                                     <>
                                         {/* Grid de variables seleccionables */}
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-4">
+                                        <div className="tutorial-variables-grid grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-4">
                                             {variables.map(variable => (
                                                 <div
                                                     key={variable.id}
@@ -276,10 +306,10 @@ export default function Variables() {
                                         </div>
 
                                         {/* Lista de variables seleccionadas */}
-                                        <div className="bg-background rounded-lg p-3 mb-4">
+                                        <div className="tutorial-selected-list bg-background rounded-lg p-3 mb-4">
                                             <div className="flex justify-between items-center mb-2">
                                                 <h3 className="text-white font-medium">Variables Seleccionadas</h3>
-                                                <span className="text-xs text-gray-400">
+                                                <span className="tutorial-variable-count text-xs text-gray-400">
                                                     {selectedVariables.length} de {variables.length} variables
                                                 </span>
                                             </div>
@@ -323,15 +353,16 @@ export default function Variables() {
                                     : 'Seleccione al menos una variable para continuar'}
                             </span>
                             <button
+                                // ✅ COMBINAR LOS DOS className EN UNO SOLO
+                                className={`tutorial-next-button px-4 py-2 rounded-lg flex items-center ${selectedVariables.length === 0 || (dataSourceConfig.protocol === 'file' && !rangoFechasSeleccionado)
+                                    ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                                    : 'bg-orange-400 text-white hover:bg-orange-500'
+                                    } transition-colors`}
                                 onClick={() => { handleTimeModalOpen(); }}
                                 disabled={
                                     selectedVariables.length === 0 ||
                                     (dataSourceConfig.protocol === 'file' && !rangoFechasSeleccionado)
                                 }
-                                className={`px-4 py-2 rounded-lg flex items-center
-                 ${selectedVariables.length === 0 || (dataSourceConfig.protocol === 'file' && !rangoFechasSeleccionado)
-                                        ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                                        : 'bg-orange-400 text-white hover:bg-orange-500'} transition-colors`}
                             >
                                 Siguiente Paso
                                 <ArrowRight className="ml-2" />

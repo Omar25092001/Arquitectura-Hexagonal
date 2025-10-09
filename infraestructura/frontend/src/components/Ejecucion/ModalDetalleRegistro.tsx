@@ -2,6 +2,8 @@ import { type DataPoint } from './DatosEntiempoReal';
 import { useEffect, useState } from 'react';
 import { obtenerAlgoritmos, ejecutarAlgoritmo } from '../../services/algoritmo.service';
 import { crearEjecucion } from '../../services/ejecucion.service';
+import { useTutorial } from '../Tutorial/TutorialContext';
+import { TutorialModalAlgoritmo } from '../Tutorial/TutorialModalAlgoritmo';
 import ModalResultadosAlgoritmos from './ModalResultadosAlgoritmos';
 
 interface ModalDetalleRegistroProps {
@@ -173,10 +175,18 @@ export default function ModalDetalleRegistro({
     const [resultadoAlgoritmo, setResultadoAlgoritmo] = useState<ResultadoAlgoritmo | null>(null);
     const [errorEjecucion, setErrorEjecucion] = useState<string>('');
 
+    const { startTutorial, endTutorial, isActive } = useTutorial();
+
     // Cargar algoritmos cuando se abre el modal
     useEffect(() => {
         if (isOpen && usuarioId) {
             cargarAlgoritmos();
+            const primeraVez = localStorage.getItem('tutorialPrimeraVez');
+            if (isActive ) endTutorial();
+            if (primeraVez === 'true') {
+                startTutorial(TutorialModalAlgoritmo); // O el tutorial correspondiente
+                localStorage.setItem('tutorialPrimeraVez', 'shown');
+            }
         }
         // Limpiar resultados al abrir/cerrar
         if (isOpen) {
@@ -185,296 +195,300 @@ export default function ModalDetalleRegistro({
         }
     }, [isOpen, usuarioId]);
 
-    const cargarAlgoritmos = async () => {
-        setLoadingAlgoritmos(true);
+
+
+
+
+const cargarAlgoritmos = async () => {
+    setLoadingAlgoritmos(true);
+    try {
+        const response = await obtenerAlgoritmos(usuarioId);
+        console.log('Algoritmos cargados:', response.algoritmos);
+        setAlgoritmos(response.algoritmos || []);
+    } catch (error) {
+        console.error('Error al cargar algoritmos:', error);
+        setAlgoritmos([]);
+    } finally {
+        setLoadingAlgoritmos(false);
+    }
+};
+
+const limpiarResultado = () => {
+    setResultadoAlgoritmo(null);
+    setErrorEjecucion('');
+};
+
+// Función para obtener valores seguros para el algoritmo
+const obtenerValoresParaAlgoritmo = (): number[] => {
+    // ✅ No simular valores - usar solo datos reales
+    const datosColumna = selectedData?._datosColumna as number[];
+    const indiceFila = selectedData?._indiceFila as number;
+
+    // ❌ Si no hay datos reales, lanzar error
+    if (!datosColumna || datosColumna.length === 0) {
+        throw new Error('No hay datos de columna disponibles');
+    }
+
+    if (indiceFila === undefined || indiceFila < 0 || indiceFila >= datosColumna.length) {
+        throw new Error('Índice de fila inválido');
+    }
+
+    let valoresSeleccionados: number[] = [];
+
+    if (rangoDireccion === 'arriba') {
+        // TODOS los datos desde el inicio hasta el punto seleccionado (incluido)
+        valoresSeleccionados = datosColumna.slice(0, indiceFila + 1);
+    } else if (rangoDireccion === 'abajo') {
+        // TODOS los datos desde el punto seleccionado hasta el final
+        valoresSeleccionados = datosColumna.slice(indiceFila);
+    } else {
+        throw new Error('Dirección de rango inválida');
+    }
+    if (valoresSeleccionados.length === 0) {
+        throw new Error('No se pudieron extraer valores del rango seleccionado');
+    }
+
+    return valoresSeleccionados;
+};
+
+// Función principal para ejecutar algoritmo
+// Función principal para ejecutar algoritmo
+const ejecutarAlgoritmoSeleccionado = async () => {
+    if (!selectedAlgorithm) {
+        setErrorEjecucion('Selecciona un algoritmo');
+        return;
+    }
+
+    const algoritmoSeleccionado = algoritmos.find(alg => alg.id === selectedAlgorithm);
+    if (!algoritmoSeleccionado) {
+        setErrorEjecucion('Algoritmo no encontrado');
+        return;
+    }
+
+    setEjecutando(true);
+    setResultadoAlgoritmo(null);
+    setErrorEjecucion('');
+
+    try {
+        const tipo = detectarTipoAlgoritmo(algoritmoSeleccionado);
+        const nombreLimpio = obtenerNombreLimpio(algoritmoSeleccionado);
+
+        // ✅ Intentar obtener valores reales - puede lanzar error
+        let valoresParaAlgoritmo: number[];
         try {
-            const response = await obtenerAlgoritmos(usuarioId);
-            console.log('Algoritmos cargados:', response.algoritmos);
-            setAlgoritmos(response.algoritmos || []);
-        } catch (error) {
-            console.error('Error al cargar algoritmos:', error);
-            setAlgoritmos([]);
-        } finally {
-            setLoadingAlgoritmos(false);
-        }
-    };
-
-    const limpiarResultado = () => {
-        setResultadoAlgoritmo(null);
-        setErrorEjecucion('');
-    };
-
-    // Función para obtener valores seguros para el algoritmo
-    const obtenerValoresParaAlgoritmo = (): number[] => {
-        // ✅ No simular valores - usar solo datos reales
-        const datosColumna = selectedData?._datosColumna as number[];
-        const indiceFila = selectedData?._indiceFila as number;
-
-        // ❌ Si no hay datos reales, lanzar error
-        if (!datosColumna || datosColumna.length === 0) {
-            throw new Error('No hay datos de columna disponibles');
-        }
-
-        if (indiceFila === undefined || indiceFila < 0 || indiceFila >= datosColumna.length) {
-            throw new Error('Índice de fila inválido');
-        }
-
-        let valoresSeleccionados: number[] = [];
-
-        if (rangoDireccion === 'arriba') {
-            // TODOS los datos desde el inicio hasta el punto seleccionado (incluido)
-            valoresSeleccionados = datosColumna.slice(0, indiceFila + 1);
-        } else if (rangoDireccion === 'abajo') {
-            // TODOS los datos desde el punto seleccionado hasta el final
-            valoresSeleccionados = datosColumna.slice(indiceFila);
-        } else {
-            throw new Error('Dirección de rango inválida');
-        }
-        if (valoresSeleccionados.length === 0) {
-            throw new Error('No se pudieron extraer valores del rango seleccionado');
-        }
-
-        return valoresSeleccionados;
-    };
-
-    // Función principal para ejecutar algoritmo
-    // Función principal para ejecutar algoritmo
-    const ejecutarAlgoritmoSeleccionado = async () => {
-        if (!selectedAlgorithm) {
-            setErrorEjecucion('Selecciona un algoritmo');
-            return;
-        }
-
-        const algoritmoSeleccionado = algoritmos.find(alg => alg.id === selectedAlgorithm);
-        if (!algoritmoSeleccionado) {
-            setErrorEjecucion('Algoritmo no encontrado');
-            return;
-        }
-
-        setEjecutando(true);
-        setResultadoAlgoritmo(null);
-        setErrorEjecucion('');
-
-        try {
-            const tipo = detectarTipoAlgoritmo(algoritmoSeleccionado);
-            const nombreLimpio = obtenerNombreLimpio(algoritmoSeleccionado);
-
-            // ✅ Intentar obtener valores reales - puede lanzar error
-            let valoresParaAlgoritmo: number[];
-            try {
-                valoresParaAlgoritmo = obtenerValoresParaAlgoritmo();
-            } catch (error: any) {
-                // ❌ Error específico de datos
-                setErrorEjecucion(`Error con los datos: ${error.message}`);
-                return;
-            }
-
-            // Construir payload según el tipo
-            let payload: any = {
-                usuarioId: usuarioId,
-                nombreModelo: nombreLimpio,
-                valores: valoresParaAlgoritmo
-            };
-
-            // Agregar parámetros específicos según el tipo
-            switch (tipo) {
-                case 'predictivo':
-                    payload.nPasos = 7;
-                    break;
-                case 'optimizacion':
-                    payload.objetivo = 'maximizar';
-                    payload.iteraciones = 100;
-                    break;
-                case 'clasificacion':
-                    payload.umbralConfianza = 0.8;
-                    break;
-            }
-
-            // ✅ EJECUTAR ALGORITMO
-            const resultado = await ejecutarAlgoritmo(payload);
-
-            // ✅ SI LA RESPUESTA ES EXITOSA, GUARDAR Y MOSTRAR RESULTADO
-            if (resultado.success) {
-                const resultadoData = resultado.data;
-
-                // Mostrar resultado primero
-                setResultadoAlgoritmo(resultadoData);
-
-                // ✅ GUARDAR EJECUCIÓN AUTOMÁTICAMENTE EN SEGUNDO PLANO
-                try {
-                    const resultadosNumericos = extraerResultadosNumericos(resultadoData);
-
-                    const datosParaGuardar = {
-                        id: crypto.randomUUID(),
-                        usuarioId: usuarioId,
-                        nombreAlgoritmo: nombreLimpio,
-                        tipoAlgoritmo: tipo,
-                        valoresEntrada: valoresParaAlgoritmo,
-                        variableSeleccionada: selectedData?._nombreColumnaSeleccionada || 'variable_desconocida',
-                        fechaEjecucion: new Date().toISOString(),
-                        resultado: resultadosNumericos,
-                        tiempoEjecucion: (resultadoData as any).tiempo_ejecucion || 1.0
-                    };
-
-                    // Guardar en BD
-                    await crearEjecucion(datosParaGuardar);
-                    console.log('✅ Ejecución guardada automáticamente:', datosParaGuardar.id);
-
-                } catch (errorGuardado: any) {
-                    // ⚠️ Si falla el guardado, solo loguear (no afecta al usuario)
-                    console.error('⚠️ Error al guardar ejecución (resultado mostrado correctamente):', errorGuardado);
-                }
-
-            } else {
-                // ❌ Si el algoritmo no fue exitoso, mostrar error
-                setErrorEjecucion(resultado.message || 'Error desconocido en la ejecución');
-            }
-
+            valoresParaAlgoritmo = obtenerValoresParaAlgoritmo();
         } catch (error: any) {
-            // ❌ Error en la petición o ejecución
-            const errorMsg = error.response?.data?.message || error.message || 'Error al ejecutar el algoritmo';
-            setErrorEjecucion(errorMsg);
-        } finally {
-            setEjecutando(false);
-        }
-    };
-
-    // Renderizar opciones de algoritmos con iconos
-    const renderAlgorithmOptions = () => {
-        if (loadingAlgoritmos) {
-            return <option value="">Cargando algoritmos...</option>;
+            // ❌ Error específico de datos
+            setErrorEjecucion(`Error con los datos: ${error.message}`);
+            return;
         }
 
-        if (algoritmos.length === 0) {
-            return <option value="">No tienes algoritmos entrenados</option>;
+        // Construir payload según el tipo
+        let payload: any = {
+            usuarioId: usuarioId,
+            nombreModelo: nombreLimpio,
+            valores: valoresParaAlgoritmo
+        };
+
+        // Agregar parámetros específicos según el tipo
+        switch (tipo) {
+            case 'predictivo':
+                payload.nPasos = 7;
+                break;
+            case 'optimizacion':
+                payload.objetivo = 'maximizar';
+                payload.iteraciones = 100;
+                break;
+            case 'clasificacion':
+                payload.umbralConfianza = 0.8;
+                break;
         }
 
-        return (
-            <>
-                <option value="">Selecciona un algoritmo</option>
-                {algoritmos.map(alg => {
-                    const tipo = detectarTipoAlgoritmo(alg);
-                    const config = obtenerConfigTipo(tipo);
-                    const nombreLimpio = obtenerNombreLimpio(alg);
+        // ✅ EJECUTAR ALGORITMO
+        const resultado = await ejecutarAlgoritmo(payload);
 
-                    return (
-                        <option key={alg.id} value={alg.id}>
-                            [{config.icono}] {nombreLimpio} ({tipo})
-                        </option>
-                    );
-                })}
-            </>
-        );
-    };
+        // ✅ SI LA RESPUESTA ES EXITOSA, GUARDAR Y MOSTRAR RESULTADO
+        if (resultado.success) {
+            const resultadoData = resultado.data;
 
-    const renderResultado = () => {
-        if (!resultadoAlgoritmo) return null;
+            // Mostrar resultado primero
+            setResultadoAlgoritmo(resultadoData);
 
-        return (
-            <ModalResultadosAlgoritmos
-                resultado={resultadoAlgoritmo}
-                onCerrar={limpiarResultado}
-            />
-        );
-    };
+            // ✅ GUARDAR EJECUCIÓN AUTOMÁTICAMENTE EN SEGUNDO PLANO
+            try {
+                const resultadosNumericos = extraerResultadosNumericos(resultadoData);
 
-    // Renderizar error si existe
-    const renderError = () => {
-        if (!errorEjecucion) return null;
+                const datosParaGuardar = {
+                    id: crypto.randomUUID(),
+                    usuarioId: usuarioId,
+                    nombreAlgoritmo: nombreLimpio,
+                    tipoAlgoritmo: tipo,
+                    valoresEntrada: valoresParaAlgoritmo,
+                    variableSeleccionada: selectedData?._nombreColumnaSeleccionada || 'variable_desconocida',
+                    fechaEjecucion: new Date().toISOString(),
+                    resultado: resultadosNumericos,
+                    tiempoEjecucion: (resultadoData as any).tiempo_ejecucion || 1.0
+                };
 
-        return (
-            <div className="mt-4 p-3 bg-red-900/50 border border-red-500 rounded-lg">
-                <p className="text-red-300 text-sm">
-                    <span className="font-bold">Error:</span> {errorEjecucion}
-                </p>
-            </div>
-        );
-    };
+                // Guardar en BD
+                await crearEjecucion(datosParaGuardar);
+                console.log('✅ Ejecución guardada automáticamente:', datosParaGuardar.id);
 
-    // Debug info actualizado
-    const renderInfoDebug = () => {
-        if (process.env.NODE_ENV !== 'development') return null;
+            } catch (errorGuardado: any) {
+                // ⚠️ Si falla el guardado, solo loguear (no afecta al usuario)
+                console.error('⚠️ Error al guardar ejecución (resultado mostrado correctamente):', errorGuardado);
+            }
 
-        const valores = obtenerValoresParaAlgoritmo();
-        const datosColumna = selectedData?._datosColumna as number[];
+        } else {
+            // ❌ Si el algoritmo no fue exitoso, mostrar error
+            setErrorEjecucion(resultado.message || 'Error desconocido en la ejecución');
+        }
 
-        return (
-            <div className="mt-3 p-2 bg-gray-800 rounded text-xs text-gray-400">
-                <p className="font-bold">Debug Info:</p>
-                <p>Columna seleccionada: {selectedData?._nombrePrimeraColumna}</p>
-                <p>Datos de columna: [{datosColumna?.slice(0, 5).join(', ')}...] ({datosColumna?.length} total)</p>
-                <p>Índice fila: {selectedData?._indiceFila}</p>
-                <p>Rango: {rangoDireccion}</p>
-                <p>Valores finales: [{valores.join(', ')}]</p>
-                <p>Algoritmos disponibles: {algoritmos.length}</p>
-            </div>
-        );
-    };
+    } catch (error: any) {
+        // ❌ Error en la petición o ejecución
+        const errorMsg = error.response?.data?.message || error.message || 'Error al ejecutar el algoritmo';
+        setErrorEjecucion(errorMsg);
+    } finally {
+        setEjecutando(false);
+    }
+};
 
-    if (!isOpen || !selectedData) return null;
+// Renderizar opciones de algoritmos con iconos
+const renderAlgorithmOptions = () => {
+    if (loadingAlgoritmos) {
+        return <option value="">Cargando algoritmos...</option>;
+    }
+
+    if (algoritmos.length === 0) {
+        return <option value="">No tienes algoritmos entrenados</option>;
+    }
 
     return (
-        <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-50">
-            <div className="bg-secundary rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-                <h2 className="text-xl font-bold text-white mb-4">Detalle del Registro</h2>
+        <>
+            <option value="">Selecciona un algoritmo</option>
+            {algoritmos.map(alg => {
+                const tipo = detectarTipoAlgoritmo(alg);
+                const config = obtenerConfigTipo(tipo);
+                const nombreLimpio = obtenerNombreLimpio(alg);
 
-                {/* Controles de selección */}
-                <div className="flex flex-col gap-3">
-                    <div>
-                        <label className="text-gray-300 mb-2 block">Selecciona el rango de datos:</label>
-                        <select
-                            value={rangoDireccion}
-                            onChange={e => onRangoDireccionChange(e.target.value as 'arriba' | 'abajo')}
-                            className="w-full px-3 py-2 rounded-lg bg-background text-white border border-gray-600 focus:border-orange-400 focus:outline-none"
-                        >
-                            <option value="arriba">De aquí hacia arriba (inicio → punto seleccionado)</option>
-                            <option value="abajo">De aquí hacia abajo (punto seleccionado → final)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-gray-300 mb-2 block">Selecciona tu algoritmo:</label>
-                        <select
-                            value={selectedAlgorithm}
-                            onChange={e => onSelectedAlgorithmChange(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg bg-background text-white border border-gray-600 focus:border-orange-400 focus:outline-none"
-                            disabled={loadingAlgoritmos || algoritmos.length === 0}
-                        >
-                            {renderAlgorithmOptions()}
-                        </select>
-                    </div>
+                return (
+                    <option key={alg.id} value={alg.id}>
+                        [{config.icono}] {nombreLimpio} ({tipo})
+                    </option>
+                );
+            })}
+        </>
+    );
+};
 
-                    {/* Botón principal para ejecutar */}
-                    <button
-                        onClick={ejecutarAlgoritmoSeleccionado}
-                        disabled={!selectedAlgorithm || ejecutando || algoritmos.length === 0}
-                        className="w-full px-4 py-3 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center font-medium"
-                    >
-                        {ejecutando ? (
-                            <>
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                Ejecutando algoritmo...
-                            </>
-                        ) : (
-                            <>
-                                Ejecutar Algoritmo
-                            </>
-                        )}
-                    </button>
+const renderResultado = () => {
+    if (!resultadoAlgoritmo) return null;
 
-                    {/* Usar el nuevo componente de resultados */}
-                    {renderResultado()}
-                    {renderError()}
-                    {renderInfoDebug()}
+    return (
+        <ModalResultadosAlgoritmos
+            resultado={resultadoAlgoritmo}
+            onCerrar={limpiarResultado}
+        />
+    );
+};
 
-                    {/* Botón cerrar */}
-                    <button
-                        onClick={onClose}
-                        className="w-full px-4 py-2 rounded-xl bg-secundary border-2 border-background text-gray-300 hover:bg-background hover:border-gray-500 transition-colors mt-3"
-                    >
-                        Cerrar
-                    </button>
-                </div>
-            </div>
+// Renderizar error si existe
+const renderError = () => {
+    if (!errorEjecucion) return null;
+
+    return (
+        <div className="mt-4 p-3 bg-red-900/50 border border-red-500 rounded-lg">
+            <p className="text-red-300 text-sm">
+                <span className="font-bold">Error:</span> {errorEjecucion}
+            </p>
         </div>
     );
+};
+
+// Debug info actualizado
+const renderInfoDebug = () => {
+    if (process.env.NODE_ENV !== 'development') return null;
+
+    const valores = obtenerValoresParaAlgoritmo();
+    const datosColumna = selectedData?._datosColumna as number[];
+
+    return (
+        <div className="mt-3 p-2 bg-gray-800 rounded text-xs text-gray-400">
+            <p className="font-bold">Debug Info:</p>
+            <p>Columna seleccionada: {selectedData?._nombrePrimeraColumna}</p>
+            <p>Datos de columna: [{datosColumna?.slice(0, 5).join(', ')}...] ({datosColumna?.length} total)</p>
+            <p>Índice fila: {selectedData?._indiceFila}</p>
+            <p>Rango: {rangoDireccion}</p>
+            <p>Valores finales: [{valores.join(', ')}]</p>
+            <p>Algoritmos disponibles: {algoritmos.length}</p>
+        </div>
+    );
+};
+
+if (!isOpen || !selectedData) return null;
+
+return (
+    <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center z-50">
+        <div className="bg-secundary rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-white mb-4">Detalle del Registro</h2>
+
+            {/* Controles de selección */}
+            <div className="flex flex-col gap-3">
+                <div>
+                    <label className="text-gray-300 mb-2 block">Selecciona el rango de datos:</label>
+                    <select
+                        value={rangoDireccion}
+                        onChange={e => onRangoDireccionChange(e.target.value as 'arriba' | 'abajo')}
+                        className="w-full px-3 py-2 rounded-lg bg-background text-white border border-gray-600 focus:border-orange-400 focus:outline-none"
+                    >
+                        <option value="arriba">De aquí hacia arriba (inicio → punto seleccionado)</option>
+                        <option value="abajo">De aquí hacia abajo (punto seleccionado → final)</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="text-gray-300 mb-2 block">Selecciona tu algoritmo:</label>
+                    <select
+                        value={selectedAlgorithm}
+                        onChange={e => onSelectedAlgorithmChange(e.target.value)}
+                        className="modal-algorithm-select  w-full px-3 py-2 rounded-lg bg-background text-white border border-gray-600 focus:border-orange-400 focus:outline-none"
+                        disabled={loadingAlgoritmos || algoritmos.length === 0}
+                    >
+                        {renderAlgorithmOptions()}
+                    </select>
+                </div>
+
+                {/* Botón principal para ejecutar */}
+                <button
+                    onClick={ejecutarAlgoritmoSeleccionado}
+                    disabled={!selectedAlgorithm || ejecutando || algoritmos.length === 0}
+                    className="modal-algorithm-run w-full px-4 py-3 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center font-medium"
+                >
+                    {ejecutando ? (
+                        <>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                            Ejecutando algoritmo...
+                        </>
+                    ) : (
+                        <>
+                            Ejecutar Algoritmo
+                        </>
+                    )}
+                </button>
+
+                {/* Usar el nuevo componente de resultados */}
+                {renderResultado()}
+                {renderError()}
+                {renderInfoDebug()}
+
+                {/* Botón cerrar */}
+                <button
+                    onClick={onClose}
+                    className="w-full px-4 py-2 rounded-xl bg-secundary border-2 border-background text-gray-300 hover:bg-background hover:border-gray-500 transition-colors mt-3"
+                >
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+);
 }

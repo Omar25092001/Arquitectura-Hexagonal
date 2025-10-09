@@ -11,7 +11,7 @@ import { SiInfluxdb } from "react-icons/si";
 import { RiFileExcel2Fill } from "react-icons/ri";
 import { useNavigate } from 'react-router-dom';
 import { useTutorial } from '../components/Tutorial/TutorialContext';
-import { fuenteDatosTutorial } from '../components/Tutorial/FuenteDatosTutorial';
+import { fuenteDatosTutorial } from '../components/Tutorial/TutorialFuenteDatos';
 
 export default function FuenteDatos() {
     const [selectedDataSource, setSelectedDataSource] = useState('mqtt');
@@ -109,20 +109,18 @@ export default function FuenteDatos() {
         };
     }, []); // ✅ Array vacío - solo se ejecuta una vez al montar
 
-    // ✅ SEGUNDO USEEFFECT: Para iniciar el tutorial (SE EJECUTA DESPUÉS DEL PRIMERO)
+
     useEffect(() => {
+        // Solo iniciar el tutorial si la página ya fue recargada
         const hasReloaded = sessionStorage.getItem('fuenteDatosReloaded');
-        
-        // Solo iniciar tutorial si la página ya fue recargada
-        if (hasReloaded) {
-            const tutorialCompleted = localStorage.getItem('tutorialCompleted');
-            if (!tutorialCompleted || tutorialCompleted === 'false') {
-                setTimeout(() => {
-                    startTutorial(fuenteDatosTutorial);
-                }, 500);
-            }
+        console.log('hasReloaded:', hasReloaded);
+        const primeraVez = localStorage.getItem('tutorialPrimeraVez');
+        if (hasReloaded === 'true' && primeraVez === 'true') {
+            console.log("se de debeira iniciar")
+            startTutorial( fuenteDatosTutorial);
         }
-    }, []); // ✅ Array vacío - solo se ejecuta una vez
+    }, []);
+
 
     useEffect(() => {
         return () => {

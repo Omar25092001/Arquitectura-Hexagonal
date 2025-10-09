@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTutorial } from './TutorialContext';
-import TutorialTooltip from './TutorialTooltip';
+import TutorialTooltip from './TutorialToolTip';
 
 export default function TutorialOverlay() {
     const { isActive, currentStep, nextStep, prevStep, skipTutorial, currentStepIndex, activeTutorial } = useTutorial();
@@ -20,29 +20,7 @@ export default function TutorialOverlay() {
                 const rect = element.getBoundingClientRect();
                 setHighlightedRect(rect);
                 setTargetElement(element);
-                
-                // Scroll suave hacia el elemento si no está completamente visible
-                const isFullyVisible = 
-                    rect.top >= 0 &&
-                    rect.left >= 0 &&
-                    rect.bottom <= window.innerHeight &&
-                    rect.right <= window.innerWidth;
-
-                if (!isFullyVisible) {
-                    element.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center',
-                        inline: 'center'
-                    });
-                    
-                    // Recalcular después del scroll
-                    setTimeout(() => {
-                        const newRect = element.getBoundingClientRect();
-                        setHighlightedRect(newRect);
-                    }, 500);
-                }
             } else if (currentStep.waitForElement) {
-                // Esperar a que el elemento exista
                 setTimeout(updateHighlight, 100);
             }
         };
@@ -60,53 +38,23 @@ export default function TutorialOverlay() {
         window.addEventListener('resize', handleUpdate);
         window.addEventListener('scroll', handleUpdate, true);
 
+        // ✅ Actualizar cuando el DOM cambia
+        let observer: MutationObserver | null = null;
+        if (targetElement) {
+            observer = new MutationObserver(() => {
+                const rect = targetElement.getBoundingClientRect();
+                setHighlightedRect(rect);
+            });
+            observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+        }
+
         return () => {
             window.removeEventListener('resize', handleUpdate);
             window.removeEventListener('scroll', handleUpdate, true);
+            if (observer) observer.disconnect();
         };
     }, [isActive, currentStep, targetElement]);
 
-    // Bloquear interacciones fuera del tutorial
-    useEffect(() => {
-        if (!isActive) return;
-
-        const handleClick = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            
-            // Permitir clics solo en el tooltip
-            const isTooltipClick = target.closest('[data-tutorial-tooltip]');
-            
-            if (!isTooltipClick) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        };
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            // Bloquear todas las teclas excepto Escape (para salir)
-            if (e.key !== 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-            } else {
-                skipTutorial();
-            }
-        };
-
-        // Capturar eventos en fase de captura (antes que otros listeners)
-        document.addEventListener('click', handleClick, true);
-        document.addEventListener('mousedown', handleClick, true);
-        document.addEventListener('keydown', handleKeyDown, true);
-
-        // Deshabilitar scroll de la página
-        document.body.style.overflow = 'hidden';
-
-        return () => {
-            document.removeEventListener('click', handleClick, true);
-            document.removeEventListener('mousedown', handleClick, true);
-            document.removeEventListener('keydown', handleKeyDown, true);
-            document.body.style.overflow = '';
-        };
-    }, [isActive, skipTutorial]);
 
     if (!isActive || !currentStep) return null;
 
@@ -115,9 +63,9 @@ export default function TutorialOverlay() {
     return (
         <>
             {/* Overlay oscuro con recorte para el elemento resaltado */}
-            <div 
+            <div
                 className="fixed inset-0 z-[9998]"
-                style={{ cursor: 'not-allowed' }}
+                style={{ pointerEvents: 'none' }}
             >
                 <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none">
                     <defs>

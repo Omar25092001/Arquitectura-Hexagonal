@@ -26,7 +26,7 @@ export default function ModalResultadosAlgoritmos({ resultado, onCerrar }: Conte
         if (resultado.tipo !== 'predictivo') return null;
         
         return (
-            <div className="space-y-4">
+            <div className="modal-algorithm-results space-y-4">
                 <div className="flex items-center gap-2">
                     <h4 className="text-blue-400 font-semibold">Predicciones Futuras</h4>
                 </div>

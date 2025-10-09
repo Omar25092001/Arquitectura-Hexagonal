@@ -95,7 +95,7 @@ export default function DatosEnTiempoReal({
                 ) : (
                     <div className="space-y-6">
                         {/* ✅ Selector de columna para algoritmos */}
-                        <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
+                        <div className="algoritmo-variable-select bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
                             <h4 className="text-blue-300 font-medium mb-3">Seleccionar Variable para Algoritmos</h4>
                             <div className="space-y-3">
                                 <div>
@@ -198,11 +198,11 @@ export default function DatosEnTiempoReal({
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody >
                                         {liveData.slice(0, 15).map((data, index) => (
                                             <tr
                                                 key={index}
-                                                className="border-b border-gray-700 hover:bg-secundary cursor-pointer transition-colors"
+                                                className="ejecucion-algorithm-run border-b border-gray-700 hover:bg-secundary cursor-pointer transition-colors"
                                                 onClick={() => handleSelectData(data, index)}
                                             >
                                                 <td className="text-gray-300 p-3 text-sm">{data.timestamp}</td>

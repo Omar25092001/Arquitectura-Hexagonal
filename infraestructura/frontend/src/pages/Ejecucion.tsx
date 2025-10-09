@@ -3,6 +3,9 @@ import { useUserStore } from '@/store/user.store';
 import Header from '../components/Header';
 import MonitorizacionVariables from '@/components/Ejecucion/MonitorizacionVariables'
 import DatosEnTiempoReal, { type DataPoint } from '../components/Ejecucion/DatosEntiempoReal';
+import { TutorialEjecucion } from '../components/Tutorial/TutorialEjecucion';
+import { useTutorial } from '../components/Tutorial/TutorialContext';
+import { HelpCircle } from 'lucide-react';
 import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, Sun, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -33,14 +36,18 @@ export default function Ejecucion() {
     const [selectedData, setSelectedData] = useState<DataPoint | null>(null);
     const [intervaloTiempo, setIntervaloTiempo] = useState<number>(15);
 
-    const [rangoDireccion, setRangoDireccion] = useState<'arriba' | 'abajo' >('arriba');
+    const [rangoDireccion, setRangoDireccion] = useState<'arriba' | 'abajo'>('arriba');
     const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>('');
 
     const [isProcessingAlgorithm, setIsProcessingAlgorithm] = useState(false);
 
 
     const [modoMonitorizacion, setModoMonitorizacion] = useState(false);
-    
+
+    const { endTutorial, startTutorial } = useTutorial();
+
+
+
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
         { id: 2, title: 'Variables', active: true },
@@ -59,6 +66,13 @@ export default function Ejecucion() {
 
 
         loadConfigurations();
+    }, []);
+
+    useEffect(() => {
+        const primeraVez = localStorage.getItem('tutorialPrimeraVez');
+        if (primeraVez === 'true') {
+            startTutorial(TutorialEjecucion); // O el tutorial correspondiente
+        }
     }, []);
 
     // Manejar inicio de simulación
@@ -174,6 +188,7 @@ export default function Ejecucion() {
     const handleSelectData = (data: DataPoint) => {
         setSelectedData(data);
         setShowDataModal(true);
+        endTutorial();
     }
 
     const handleSeleccionarRango = async (direccion: 'arriba' | 'abajo' | 'actual') => {
@@ -198,7 +213,7 @@ export default function Ejecucion() {
                 // Desde el seleccionado hasta el final
                 datosSeleccionados = liveData.slice(idx);
                 rangeDescription = `Desde el registro ${idx + 1} hasta el final (${datosSeleccionados.length} registros)`;
-            } 
+            }
             // Obtener variables disponibles (excluir timestamp)
             const variables = Object.keys(datosSeleccionados[0] || {}).filter(key => key !== 'timestamp');
 
@@ -268,9 +283,17 @@ export default function Ejecucion() {
                             <span className="whitespace-nowrap">{step.title}</span>
                         </div>
                     ))}
+                    <button
+                        onClick={() => startTutorial(TutorialEjecucion)}
+                        className="flex items-center text-orange-400 hover:text-orange-300 transition-colors ml-auto"
+                        title="Ver tutorial"
+                    >
+                        <HelpCircle className="w-5 h-5 mr-1" />
+                        <span className="text-sm">Tutorial</span>
+                    </button>
                 </div>
 
-                <div className="w-full max-w-7xl space-y-6">
+                <div className="ejecucion-header w-full max-w-7xl space-y-6">
                     {/* Header de Ejecución */}
                     <div className="bg-secundary rounded-2xl shadow-md p-6">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
@@ -293,7 +316,7 @@ export default function Ejecucion() {
                             </div>
 
                             {/* Estado de Conexión */}
-                            <div className="flex items-center mt-4 md:mt-0">
+                            <div className="ejecucion-connection-status flex items-center mt-4 md:mt-0">
                                 {getConnectionIcon()}
                                 <span className="ml-2 text-white font-medium">
                                     {getConnectionText()}
@@ -310,11 +333,11 @@ export default function Ejecucion() {
                         )}
 
                         {/* Controles de Simulación */}
-                        <div className="flex flex-wrap gap-3">
+                        <div className="ejecucion-controls flex flex-wrap gap-3">
                             {!isRunning ? (
                                 <button
                                     onClick={handleStartSimulation}
-                                    className="px-6 py-3 bg-orange-400 text-white hover:bg-orange-500 rounded-lg flex items-center transition-colors font-medium"
+                                    className="extraer-datos px-6 py-3 bg-orange-400 text-white hover:bg-orange-500 rounded-lg flex items-center transition-colors font-medium"
                                 >
                                     <Play className="w-5 h-5 mr-2" />
                                     Extraer Datos
@@ -348,7 +371,7 @@ export default function Ejecucion() {
                     </div>
 
                     {/* Resumen de Configuración */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="ejecucion-summary grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Fuente de Datos */}
                         <div className="bg-secundary rounded-lg p-6">
                             <h3 className="text-lg font-semibold text-white mb-3">Fuente de Datos</h3>
@@ -427,9 +450,9 @@ export default function Ejecucion() {
 
                         <button
                             onClick={() => setModoMonitorizacion(!modoMonitorizacion)}
-                            className={`w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2 text-white rounded-lg flex items-center justify-center gap-2 transition-colors text-sm sm:text-base ${modoMonitorizacion
-                                    ? 'bg-red-500 hover:bg-red-600'
-                                    : 'bg-green-500 hover:bg-green-600'
+                            className={`ejecucion-monitor-switch w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2 text-white rounded-lg flex items-center justify-center gap-2 transition-colors text-sm sm:text-base ${modoMonitorizacion
+                                ? 'bg-red-500 hover:bg-red-600'
+                                : 'bg-green-500 hover:bg-green-600'
                                 }`}
                         >
                             {modoMonitorizacion ? (
@@ -448,21 +471,23 @@ export default function Ejecucion() {
                         </button>
                     </div>
                     {/* Panel de Datos en Tiempo Real */}
-                    {modoMonitorizacion ? (
-                        <MonitorizacionVariables
-                            variablesRecibidas={variablesConfig?.variables || []}
-                            onAsignar={handleAsignacionesMonitor}
-                            datosActuales={liveData[0] || {}} // Pasar datos actuales
-                        />
-                    ) : (
-                        <DatosEnTiempoReal
-                            connectionStatus={connectionStatus}
-                            dataSourceConfig={dataSourceConfig}
-                            liveData={liveData}
-                            onSelectData={handleSelectData}
-                        />
-                    )}
+                    <div className="ejecucion-data-panel">
+                        {modoMonitorizacion ? (
+                            <MonitorizacionVariables
+                                variablesRecibidas={variablesConfig?.variables || []}
+                                onAsignar={handleAsignacionesMonitor}
+                                datosActuales={liveData[0] || {}} // Pasar datos actuales
+                            />
+                        ) : (
+                            <DatosEnTiempoReal
+                                connectionStatus={connectionStatus}
+                                dataSourceConfig={dataSourceConfig}
+                                liveData={liveData}
+                                onSelectData={handleSelectData}
+                            />
+                        )}
 
+                    </div>
                 </div>
             </div>
             <ModalDetalleRegistro
