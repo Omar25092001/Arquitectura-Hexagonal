@@ -3,7 +3,7 @@ import { useUserStore } from '@/store/user.store';
 import Header from '../components/Header';
 import MonitorizacionVariables from '@/components/Ejecucion/MonitorizacionVariables'
 import DatosEnTiempoReal, { type DataPoint } from '../components/Ejecucion/DatosEntiempoReal';
-import { TutorialEjecucion } from '../components/Tutorial/TutorialEjecucion';
+import { TutorialEjecucion } from '../components/Tutorial/TutorialEJecucion';
 import { useTutorial } from '../components/Tutorial/TutorialContext';
 import { HelpCircle } from 'lucide-react';
 import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, Sun, ArrowLeft } from 'lucide-react';
@@ -202,17 +202,17 @@ export default function Ejecucion() {
         try {
             const idx = liveData.findIndex(d => d === selectedData);
             let datosSeleccionados: DataPoint[] = [];
-            let rangeDescription = '';
+            
 
             // Seleccionar datos según la dirección
             if (direccion === 'arriba') {
                 // Desde el inicio hasta el seleccionado (incluido), invertir para orden cronológico
                 datosSeleccionados = liveData.slice(0, idx + 1).reverse();
-                rangeDescription = `Desde el inicio hasta el registro ${idx + 1} (${datosSeleccionados.length} registros)`;
+                
             } else if (direccion === 'abajo') {
                 // Desde el seleccionado hasta el final
                 datosSeleccionados = liveData.slice(idx);
-                rangeDescription = `Desde el registro ${idx + 1} hasta el final (${datosSeleccionados.length} registros)`;
+    
             }
             // Obtener variables disponibles (excluir timestamp)
             const variables = Object.keys(datosSeleccionados[0] || {}).filter(key => key !== 'timestamp');
@@ -430,7 +430,7 @@ export default function Ejecucion() {
                                             connectionStatus === 'error' ? '🔴 Error' :
                                                 '⚪ Desconectado'
                                 }</p>
-                                <p><strong>Monitorización:</strong> {modoMonitorizacion ? '🔍 Activa' : '📊 Datos en bruto'}</p>
+                                <p><strong>Monitorización:</strong> {modoMonitorizacion ? ' Activa' : ' Datos en bruto'}</p>
                                 <p><strong>Datos almacenados:</strong> {liveData.length} registros</p>
                             </div>
                         </div>
