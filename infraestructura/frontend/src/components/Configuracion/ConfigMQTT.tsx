@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { CheckCircle, XCircle, Loader2, HelpCircle } from 'lucide-react';
-import * as mqtt from 'mqtt';
+import mqtt from 'mqtt';
 import FormatoMQTT from '../Formatos/FormatoMQTT';
 
 interface ConfigMQTTProps {
@@ -9,137 +9,117 @@ interface ConfigMQTTProps {
 }
 
 const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps) => {
+
     const [mostrarModalFormato, setMostrarModalFormato] = useState(false);
 
-    const [config, setConfig] = useState({
-        broker: '',
-        port: '1883',
+    //Prueba de Conexión MQTT
+
+    const [mqttConfig, setMqttConfig] = useState({
+        ip: '',
         topic: '',
         username: '',
         password: ''
     });
 
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const [connectionState, setConnectionState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [connectionMessage, setConnectionMessage] = useState('');
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        const newConfig = {
-            ...config,
-            [name]: value
-        };
-        setConfig(newConfig);
-        onConfigChange?.(newConfig);
-    };
-
     const camposObligatoriosCompletos = () => {
-        return config.broker.trim() !== '' && config.port.trim() !== '' && config.topic.trim() !== '';
+        return mqttConfig.ip.trim() !== '' && mqttConfig.topic.trim() !== '';
     };
 
-    const probarConexionMqtt = () => {
-        setConnectionState('testing');
-        onConnectionStateChange?.('testing');
-        setConnectionMessage('Conectando al broker MQTT...');
+    const ProbarConexionMQTT = () => {
 
-        const brokerUrl = `ws://${config.broker}:${config.port}`;
-
-        const options: mqtt.IClientOptions = {
-            clientId: `mqtt_client_${Math.random().toString(16).slice(2, 8)}`,
-            clean: true,
-            connectTimeout: 10000,
-        };
-
-        if (config.username && config.password) {
-            options.username = config.username;
-            options.password = config.password;
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
         }
 
-        console.log('🔍 Intentando conectar a MQTT:', brokerUrl);
+        const url = `ws://${mqttConfig.ip}`;
+        const opcionesConexion: mqtt.IClientOptions = {
+            username: mqttConfig.username,
+            password: mqttConfig.password,
+        };
+        setConnectionState('testing');
+        onConnectionStateChange?.('testing');
+        setConnectionMessage('Probando conexión al broker MQTT...');
+        const client = mqtt.connect(url, opcionesConexion);
 
-        const client = mqtt.connect(brokerUrl, options);
 
-        client.on('connect', () => {
-            console.log('✅ Conexión MQTT exitosa');
-            setConnectionState('success');
-            onConnectionStateChange?.('success');
-            setConnectionMessage('Conexión exitosa al broker MQTT');
-            
-            client.subscribe(config.topic, (err) => {
-                if (!err) {
-                    console.log(`✅ Suscrito al topic: ${config.topic}`);
-                } else {
-                    console.error('❌ Error al suscribirse:', err);
-                }
-            });
-
-            setTimeout(() => {
-                client.end();
-            }, 2000);
-        });
-
-        client.on('error', (error) => {
-            console.error('❌ Error de conexión MQTT:', error);
+        timeoutRef.current = setTimeout(() => {
             setConnectionState('error');
             onConnectionStateChange?.('error');
-            setConnectionMessage(`Error de conexión: ${error.message}`);
+            setConnectionMessage('No se pudo conectar al broker MQTT.');
+            client.end(true);
+        }, 10000);
+
+
+        //Conexión y manejo de eventos
+        client.on('connect', () => {
+            setConnectionState('success');
+            onConnectionStateChange?.('success');
+            setConnectionMessage(`Conexión exitosa al broker MQTT. Suscrito al tópico ${mqttConfig.topic}.`);
+            
+            client.subscribe(mqttConfig.topic, (err) => {
+                if (err) {
+                    setConnectionState('error');
+                    setConnectionMessage(`Error al suscribirse al tópico ${mqttConfig.topic}: ${err.message}`);
+                }
+            });
+        });
+
+        //Manejo en caso de error
+        client.on('error', (err: Error) => {
+            setConnectionState('error');
+            onConnectionStateChange?.('error');
+            setConnectionMessage(`Error de conexión: ${err.message}`);
             client.end();
         });
 
-        client.on('offline', () => {
-            console.warn('⚠️ Cliente MQTT desconectado');
-            if (connectionState === 'testing') {
-                setConnectionState('error');
-                onConnectionStateChange?.('error');
-                setConnectionMessage('No se pudo conectar al broker MQTT. Verifica la dirección y el puerto.');
-            }
-        });
+    };
+
+    
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        const newConfig = { ...mqttConfig, [name]: value };
+        setMqttConfig(newConfig);
+        
+        // ENVIAR CONFIGURACIÓN AL PADRE
+        console.log('Enviando config MQTT:', newConfig);
+        onConfigChange?.(newConfig);
     };
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label htmlFor="broker" className="block text-sm font-medium text-white mb-1">
-                    Broker
+                <label htmlFor="ip" className="block text-sm font-medium text-white mb-1">
+                    Dirección IP del broker
                 </label>
                 <input
-                    id="broker"
-                    name="broker"
+                    id="ip"
+                    name="ip"
                     type="text"
-                    placeholder="broker.hivemq.com"
-                    value={config.broker}
+                    placeholder="192.168.1.100:1883"
+                    value={mqttConfig.ip}
                     onChange={handleChange}
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
             </div>
 
             <div>
-                <label htmlFor="port" className="block text-sm font-medium text-white mb-1">
-                    Puerto
-                </label>
-                <input
-                    id="port"
-                    name="port"
-                    type="text"
-                    placeholder="1883"
-                    value={config.port}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
-                />
-            </div>
-
-            <div>
-                <div className="flex items-center mb-1">
+               <div className="flex items-center mb-1">
                     <label htmlFor="topic" className="block text-sm font-medium text-white">
                         Tópico
                     </label>
                     <button
                         type="button"
                         onClick={() => setMostrarModalFormato(true)}
-                        className="ml-2 text-orange-400 hover:text-orange-300 transition-all duration-300 relative group tutorial-format-button"
-                        title="Ver formato de mensaje esperado"
+                        className="ml-2 text-gray-400 hover:text-orange-400 transition-colors"
+                        title="Ver formato de datos esperado"
                     >
-                        <HelpCircle className="w-4 h-4 animate-pulse" />
-                        <span className="absolute inset-0 rounded-full bg-orange-400 opacity-0 group-hover:opacity-30 animate-ping"></span>
+                        <HelpCircle className="w-4 h-4" />
                     </button>
                 </div>
                 <input
@@ -147,7 +127,7 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
                     name="topic"
                     type="text"
                     placeholder="sensor/data"
-                    value={config.topic}
+                    value={mqttConfig.topic}
                     onChange={handleChange}
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
@@ -155,14 +135,14 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
 
             <div>
                 <label htmlFor="username" className="block text-sm font-medium text-white mb-1">
-                    Usuario (opcional)
+                    Usuario
                 </label>
                 <input
                     id="username"
                     name="username"
                     type="text"
-                    placeholder="Usuario"
-                    value={config.username}
+                    placeholder="Usuario (opcional)"
+                    value={mqttConfig.username}
                     onChange={handleChange}
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
@@ -170,28 +150,28 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
 
             <div>
                 <label htmlFor="password" className="block text-sm font-medium text-white mb-1">
-                    Contraseña (opcional)
+                    Contraseña
                 </label>
                 <input
                     id="password"
                     name="password"
                     type="password"
-                    placeholder="Contraseña"
-                    value={config.password}
+                    placeholder="Contraseña (opcional)"
+                    value={mqttConfig.password}
                     onChange={handleChange}
                     className="w-full px-3 py-2 bg-label border border-background rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
             </div>
-
+            {/* Botón y estado de conexión con círculo indicador */}
             <div className="mt-6 flex items-center flex-wrap gap-3">
-                <button
-                    onClick={probarConexionMqtt}
+               <button
+                    onClick={ProbarConexionMQTT}
                     disabled={connectionState === 'testing' || !camposObligatoriosCompletos()}
-                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors tutorial-test-button
-                        ${connectionState === 'testing' || !camposObligatoriosCompletos()
+                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors
+                    ${connectionState === 'testing' || !camposObligatoriosCompletos()
                             ? 'bg-gray-600 cursor-not-allowed'
                             : 'bg-orange-400 hover:bg-orange-500'}`}
-                    title={!camposObligatoriosCompletos() ? 'Complete todos los campos obligatorios' : ''}
+                    title={!camposObligatoriosCompletos() ? 'Complete IP y Tópico para continuar' : ''}
                 >
                     {connectionState === 'testing' && (
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -199,6 +179,7 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
                     Probar Conexión
                 </button>
 
+                {/* Círculo indicador de estado */}
                 {connectionState === 'success' && (
                     <div className="flex items-center">
                         <div className="h-4 w-4 rounded-full bg-green-500 shadow-lg"></div>
@@ -214,6 +195,7 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
                 )}
             </div>
 
+            {/* Panel con detalles del estado */}
             {connectionState !== 'idle' && (
                 <div className={`mt-3 p-3 rounded-lg flex items-start
                     ${connectionState === 'testing' ? 'bg-gray-700 bg-opacity-70' : ''}
@@ -230,13 +212,13 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
                     </span>
                 </div>
             )}
-
             <FormatoMQTT
-                isOpen={mostrarModalFormato}
-                onClose={() => setMostrarModalFormato(false)}
+                isOpen={mostrarModalFormato} 
+                onClose={() => setMostrarModalFormato(false)} 
             />
         </div>
+
     );
-};
+}
 
 export default ConfigMQTT;

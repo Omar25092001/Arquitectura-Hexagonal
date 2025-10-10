@@ -22,7 +22,7 @@ export const fuenteDatosTutorial: Tutorial = {
     steps: [
         {
             id: 'welcome',
-            title: '¡Bienvenido al Tutorial!',
+            title: 'Guía de uso Digital Twin',
             content: 'Te guiaremos paso a paso en la configuración de tu Digital Twin. Comenzaremos seleccionando una fuente de datos.',
             target: '.tutorial-steps',
             placement: 'bottom'
