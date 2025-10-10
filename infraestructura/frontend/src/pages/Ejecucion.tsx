@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import MonitorizacionVariables from '@/components/Ejecucion/MonitorizacionVariables'
 import DatosEnTiempoReal, { type DataPoint } from '../components/Ejecucion/DatosEntiempoReal';
 import { TutorialEjecucion } from '../components/Tutorial/TutorialEJecucion';
+import { TutorialMonitorizacion } from '../components/Tutorial/TutorialMonitorizacion';
 import { useTutorial } from '../components/Tutorial/TutorialContext';
 import { HelpCircle } from 'lucide-react';
 import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, Sun, ArrowLeft } from 'lucide-react';
@@ -45,7 +46,6 @@ export default function Ejecucion() {
     const [modoMonitorizacion, setModoMonitorizacion] = useState(false);
 
     const { endTutorial, startTutorial } = useTutorial();
-
 
 
     const steps = [
@@ -202,17 +202,17 @@ export default function Ejecucion() {
         try {
             const idx = liveData.findIndex(d => d === selectedData);
             let datosSeleccionados: DataPoint[] = [];
-            
+
 
             // Seleccionar datos según la dirección
             if (direccion === 'arriba') {
                 // Desde el inicio hasta el seleccionado (incluido), invertir para orden cronológico
                 datosSeleccionados = liveData.slice(0, idx + 1).reverse();
-                
+
             } else if (direccion === 'abajo') {
                 // Desde el seleccionado hasta el final
                 datosSeleccionados = liveData.slice(idx);
-    
+
             }
             // Obtener variables disponibles (excluir timestamp)
             const variables = Object.keys(datosSeleccionados[0] || {}).filter(key => key !== 'timestamp');
@@ -436,7 +436,7 @@ export default function Ejecucion() {
                         </div>
                     </div>
                     <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-700">
-                        <h2 className="text-lg sm:text-xl font-semibold text-white flex items-center">
+                        <h2 className="monitor-title text-lg sm:text-xl font-semibold text-white flex items-center">
                             <Activity className="w-5 sm:w-6 h-5 sm:h-6 mr-2 text-orange-400" />
                             <span className="truncate">
                                 {modoMonitorizacion ? 'Monitorización de Variables' : 'Datos en Tiempo Real'}
@@ -445,6 +445,16 @@ export default function Ejecucion() {
                                 <span className="ml-2 text-xs sm:text-sm px-2 py-1 bg-green-600 bg-opacity-30 text-green-300 rounded whitespace-nowrap">
                                     En vivo
                                 </span>
+                            )}
+                            {/* ⬇️ Agrega aquí el botón de tutorial de monitorización */}
+                            {modoMonitorizacion && (
+                                <button
+                                    onClick={() => startTutorial(   TutorialMonitorizacion)}
+                                    className="ml-3 p-1 text-orange-400 hover:text-orange-300 rounded-full transition-colors"
+                                    title="Ver tutorial de monitorización"
+                                >
+                                    <HelpCircle className="w-5 h-5" />
+                                </button>
                             )}
                         </h2>
 

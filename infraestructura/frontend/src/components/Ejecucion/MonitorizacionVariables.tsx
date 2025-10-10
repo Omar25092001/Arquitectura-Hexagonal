@@ -85,7 +85,7 @@ export default function MonitorizacionVariables({
                             <select
                                 value={asignaciones[variable.key] || ''}
                                 onChange={e => handleChange(variable.key, e.target.value)}
-                                className="w-full px-3 py-2 sm:py-3 rounded-lg bg-background text-white text-sm sm:text-base border border-gray-600 hover:border-gray-500 focus:border-orange-400 focus:outline-none transition-colors"
+                                className="monitor-select-variable w-full px-3 py-2 sm:py-3 rounded-lg bg-background text-white text-sm sm:text-base border border-gray-600 hover:border-gray-500 focus:border-orange-400 focus:outline-none transition-colors"
                             >
                                 <option value="">Selecciona variable...</option>
                                 {variablesRecibidas.map(v => (
@@ -95,7 +95,7 @@ export default function MonitorizacionVariables({
                             <div className="text-gray-400 text-xs">
                                 <span className="font-medium">Especifica el valor optimo de la variable según tu caso</span>
                             </div>
-                            <div className="flex flex-col gap-1 mt-2">
+                            <div className="monitor-rangos  flex flex-col gap-1 mt-2">
                                 <div className="flex gap-2 items-center">
                                     <span className="text-xs text-red-400 w-14">Crítico</span>
                                     <input
@@ -161,7 +161,7 @@ export default function MonitorizacionVariables({
 
 
                 {/* Botón responsive */}
-                <div className="mt-8 flex justify-center">
+                <div className="monitor-confirm mt-8 flex justify-center">
                     <button
                         onClick={handleConfirmar}
                         disabled={Object.keys(asignaciones).length === 0}

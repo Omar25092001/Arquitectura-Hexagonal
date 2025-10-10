@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { loginUsuario } from '@/services/usuario.service';
 import { useUserStore } from '@/store/user.store';
 import PopupMensaje from '@/components/shared/PopupMensaje';
+import LoadingOverlay from '@/components/shared/LoadingOverlay';
 
 
 const Login = () => {
@@ -12,6 +13,8 @@ const Login = () => {
     const [mostrarContrasena, setMostrarContrasena] = useState(false);
     const [popupMensaje, setPopupMensaje] = useState('');
     const [popupTipo, setPopupTipo] = useState<'error' | 'exito'>('error');
+
+    const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
 
@@ -49,6 +52,7 @@ const Login = () => {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setLoading(true);
         try {
             const usuario = {
                 correo: email,
@@ -99,11 +103,15 @@ const Login = () => {
             setPopupMensaje('Error al iniciar sesión. Por favor, verifica tus credenciales.');
             return;
         }
+        finally {
+            setLoading(false);
+        }
 
     };
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+            {loading &&<LoadingOverlay />}
             <div className="w-full max-w-sm p-6 bg-secundary rounded-2xl shadow-md">
                 <div className="text-center">
 
