@@ -51,7 +51,7 @@ export const fuenteDatosTutorial: Tutorial = {
         },
         {
             id: 'format-help',
-            title: '📋 Formato de Respuesta',
+            title: 'Formato de Respuesta',
             content: '¿No estás seguro del formato? Haz clic en el ícono de ayuda (?) parpadeante para ver ejemplos del formato JSON que debe devolver tu servicio.',
             target: '.tutorial-format-button',
             placement: 'right',

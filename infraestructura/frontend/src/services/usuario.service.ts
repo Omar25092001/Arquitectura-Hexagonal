@@ -61,3 +61,14 @@ export async function editarEstadoUsuario(id: string, estado: boolean){
         throw error;
     }
 }
+
+export async function editarPrimeraVezUsuario(id: string, primeravez: boolean){
+    try {
+        const response = await axios.patch(`${API_URL}/api/usuarios/primeraVez/${id}`, { primeravez });
+        console.log(response.data)
+        return response.data;
+    } catch (error) {
+        console.error('Error al editar el estado del usuario:', error);
+        throw error;
+    }
+}

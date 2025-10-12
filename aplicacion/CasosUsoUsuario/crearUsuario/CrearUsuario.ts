@@ -4,6 +4,7 @@ import { UsuarioId } from "../../../dominio/usuario/objetosValor/UsuarioId";
 import { Correo } from "../../../dominio/usuario/objetosValor/Correo";
 import {Estado} from "../../../dominio/usuario/objetosValor/Estado";
 import { Contrasena } from "../../../dominio/usuario/objetosValor/Constrasena";
+import {PrimeraVez} from "../../../dominio/usuario/objetosValor/PrimeraVez";
 import { Nombre } from "../../../dominio/usuario/objetosValor/Nombre";
 import { CreatedAt } from "../../../dominio/usuario/objetosValor/CreatedAt";
 import { UpdatedAt } from "../../../dominio/usuario/objetosValor/UpdatedAt";
@@ -16,7 +17,7 @@ export class CrearUsuario {
     ) {}
 
    //Instanciaremos un objeto de la clase Usuario y lo guardaremos en el repositorio
-   async run(id:string,nombre: string, correo: string, estado:boolean, contrasena: string, createdAt:Date, updatedAt:Date): Promise<void> {
+   async run(id:string,nombre: string, correo: string, estado:boolean, contrasena: string, primeraVez:boolean, createdAt:Date, updatedAt:Date): Promise<void> {
 
         const correoObj = new Correo(correo);
         const contrasenaObj = new Contrasena(contrasena);
@@ -34,6 +35,7 @@ export class CrearUsuario {
             new Correo(correo),
             new Estado(estado),
             new Contrasena(contrasenaHasheada),
+            new PrimeraVez(primeraVez), // Por defecto el usuario es la primera vez que ingresa
             new CreatedAt(createdAt),
             new UpdatedAt(updatedAt)
         ); 

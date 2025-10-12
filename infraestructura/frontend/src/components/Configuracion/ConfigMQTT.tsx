@@ -116,10 +116,10 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
                     <button
                         type="button"
                         onClick={() => setMostrarModalFormato(true)}
-                        className="ml-2 text-gray-400 hover:text-orange-400 transition-colors"
+                        className="ml-2 text-gray-400 hover:text-orange-400 transition-colors tutorial-format-button"
                         title="Ver formato de datos esperado"
                     >
-                        <HelpCircle className="w-4 h-4" />
+                        <HelpCircle className="w-4 h-4 " />
                     </button>
                 </div>
                 <input

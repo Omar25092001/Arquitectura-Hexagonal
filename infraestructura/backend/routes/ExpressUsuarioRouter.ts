@@ -11,5 +11,6 @@ router.get('/usuarios', controller.listarUsuarios);
 router.post('/login', controller.login);
 router.put('/:id', controller.editarUsuario);
 router.patch('/estado/:id', controller.editarEstadoUsuario);
+router.patch('/primeraVez/:id', controller.editarPrimeraVezUsuario);
 
 export const ExpressUsuarioRouter = router;

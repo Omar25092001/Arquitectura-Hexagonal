@@ -12,6 +12,7 @@ type usuarioExpress = {
     nombre: string;
     correo: string;
     estado?: boolean;
+    primeravez?: boolean;
     contrasena: string;
 };
 
@@ -34,6 +35,7 @@ export class ExpressUsuarioController {
                 usuario.correo,
                 true, // Por defecto el usuario estara activo
                 usuario.contrasena,
+                true, // Por defecto el usuario es la primera vez que ingresa
                 createdAt,
                 updatedAt
             );
@@ -63,6 +65,7 @@ export class ExpressUsuarioController {
                     nombre: usuario.usuario.nombre,
                     correo: usuario.usuario.correo,
                     estado : usuario.usuario.estado,
+                    primeraVez : usuario.usuario.primeraVez,
                     token: usuario.usuario.token
                 },
             });
@@ -141,5 +144,23 @@ export class ExpressUsuarioController {
             return res.status(500).json({ message: "Error interno del servidor" });
         }  
     }
-}
 
+    editarPrimeraVezUsuario = async (req: any, res: any) => {
+        try {
+            const { id } = req.params;
+            const { primeravez } = req.body;
+            const updatedAt = new Date();
+            await ServiceContainer.usuario.editarPrimeraVezUsuario.run(
+                id,
+                primeravez,
+                updatedAt
+            );
+            return res.status(200).json({ message: "Primera vez del usuario actualizado exitosamente" });
+        } catch (error) {
+            if (error instanceof Error) {
+                return res.status(400).json({ message: error.message });
+            }
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    }
+}

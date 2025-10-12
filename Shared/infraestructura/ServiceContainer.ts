@@ -8,6 +8,8 @@ import { VerificarCredenciales } from "../../aplicacion/verificarCredenciales/Ve
 import {ObtenerUsuarios} from '../../aplicacion/CasosUsoUsuario/obtenerUsuarios/ObtenerUsuarios';
 import {EditarUsuario} from '../../aplicacion/CasosUsoUsuario/editarUsuario/EditarUsuario';
 import {EditarEstadoUsuario} from '../../aplicacion/CasosUsoUsuario/editarEstadoUsuario/EditarEstadoUsuario';
+import {EditarPrimeraVezUsuario} from '../../aplicacion/CasosUsoUsuario/editarPrimeraVezUsuario/EditarPrimeraVezUsuario';
+
 import { ObtenerAlgoritmosUsuario } from "../../aplicacion/CasosUsoAlgoritmo/ObtenerAlgoritmosUsuario";
 import { EjecutarAlgoritmo } from "../../aplicacion/CasosUsoAlgoritmo/EjecutarAlgoritmo";
 import { EjecutorModeloPython } from "../../infraestructura/backend/adaptadores/EjecutorModeloPython";
@@ -43,7 +45,8 @@ export const ServiceContainer = {
     verificarCredenciales: new VerificarCredenciales(usuarioRepositorioPostgre, servicioHasheo,Token),
     obtenerUsuarios: new ObtenerUsuarios(usuarioRepositorioPostgre),
     editarUsuario: new EditarUsuario(usuarioRepositorioPostgre, servicioHasheo),
-    editarEstadoUsuario: new EditarEstadoUsuario(usuarioRepositorioPostgre)
+    editarEstadoUsuario: new EditarEstadoUsuario(usuarioRepositorioPostgre),
+    editarPrimeraVezUsuario: new EditarPrimeraVezUsuario(usuarioRepositorioPostgre)
   },
   algoritmo: {
     obtenerAlgoritmosUsuario: new ObtenerAlgoritmosUsuario(algoritmoRepositorio),

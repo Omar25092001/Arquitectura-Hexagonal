@@ -13,6 +13,7 @@ model Usuario {
   correo            String   @unique
   estado            Boolean  @default(true)
   contrasena        String
+  primeraVez        Boolean  @default(true)
   fechaCreacion     DateTime @default(now())
   fechaActualizacion DateTime @updatedAt
   

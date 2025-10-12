@@ -1,5 +1,6 @@
 import { type DataPoint } from './DatosEntiempoReal';
 import { useEffect, useState } from 'react';
+import { editarPrimeraVezUsuario } from '@/services/usuario.service';
 import { obtenerAlgoritmos, ejecutarAlgoritmo } from '../../services/algoritmo.service';
 import { crearEjecucion } from '../../services/ejecucion.service';
 import { useTutorial } from '../Tutorial/TutorialContext';
@@ -186,7 +187,9 @@ export default function ModalDetalleRegistro({
             if (isActive) endTutorial();
             if (primeraVez === 'true') {
                 startTutorial(TutorialModalAlgoritmo); // O el tutorial correspondiente
-                localStorage.setItem('tutorialPrimeraVez', 'shown');
+
+                localStorage.setItem('tutorialPrimeraVez', 'false');
+                editarPrimeraVez(usuarioId, false);
             }
         }
         // Limpiar resultados al abrir/cerrar
@@ -197,8 +200,14 @@ export default function ModalDetalleRegistro({
     }, [isOpen, usuarioId]);
 
 
-
-
+    const editarPrimeraVez = async (id: string, primeraVez: boolean) => {
+        try {
+            await editarPrimeraVezUsuario(id, primeraVez);
+            console.log('Estado de primera vez actualizado');
+        } catch (error) {
+            console.error('Error al actualizar estado de primera vez:', error);
+        }
+    };
 
     const cargarAlgoritmos = async () => {
         setLoadingAlgoritmos(true);
@@ -341,12 +350,12 @@ export default function ModalDetalleRegistro({
                 }
 
             } else {
-                // ❌ Si el algoritmo no fue exitoso, mostrar error
+                //  Si el algoritmo no fue exitoso, mostrar error
                 setErrorEjecucion(resultado.message || 'Error desconocido en la ejecución');
             }
 
         } catch (error: any) {
-            // ❌ Error en la petición o ejecución
+            //  Error en la petición o ejecución
             const errorMsg = error.response?.data?.message || error.message || 'Error al ejecutar el algoritmo';
             setErrorEjecucion(errorMsg);
         } finally {

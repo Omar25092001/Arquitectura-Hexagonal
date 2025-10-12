@@ -1,13 +1,13 @@
 import { RepositorioUsuario } from "../../../dominio/RepositorioUsuario";
 import { UsuarioId } from "../../../dominio/usuario/objetosValor/UsuarioId";
-import { Estado } from "../../../dominio/usuario/objetosValor/Estado";
+import { PrimeraVez } from "../../../dominio/usuario/objetosValor/PrimeraVez";
 import { UpdatedAt } from "../../../dominio/usuario/objetosValor/UpdatedAt";
 import { Usuario } from "../../../dominio/usuario/Usuario";
 
-export class EditarEstadoUsuario {
+export class EditarPrimeraVezUsuario {
     constructor(private repositorioUsuario: RepositorioUsuario) {}
 
-    async run(id: string, estado: boolean, updatedAt:Date): Promise<void> {
+    async run(id: string, primeraVez: boolean, updatedAt:Date): Promise<void> {
         const usuarioActual = await this.repositorioUsuario.obtenerUsuario(new UsuarioId(id));
         if (!usuarioActual) throw new Error("Usuario no encontrado");
 
@@ -15,11 +15,11 @@ export class EditarEstadoUsuario {
             usuarioActual.id,
             usuarioActual.nombre,
             usuarioActual.correo,
-            new Estado(estado),
+            usuarioActual.estado,
             usuarioActual.contrasena,
-            usuarioActual.primeraVez,
+            new PrimeraVez(primeraVez),
             usuarioActual.createdAt,
-            new UpdatedAt(new Date())
+            new UpdatedAt(updatedAt)
         );
 
         await this.repositorioUsuario.editarUsuario(usuarioActualizado);

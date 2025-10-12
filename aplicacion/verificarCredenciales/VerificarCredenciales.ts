@@ -1,7 +1,6 @@
 import { RepositorioUsuario } from "../../dominio/RepositorioUsuario";
-import { Usuario } from "../../dominio/usuario/Usuario";
 import { Correo } from "../../dominio/usuario/objetosValor/Correo";
-import { Contrasena } from "../../dominio/usuario/objetosValor/Constrasena";
+import { PrimeraVez } from "../../dominio/usuario/objetosValor/PrimeraVez";
 import { CredencialesInvalidas } from "../../dominio/usuario/erroresDominio/CredencialesInvalidas";
 import {Hasheo} from "../../dominio/usuario/servicios/Hasheo";
 import { Token } from "../../dominio/usuario/servicios/Token";
@@ -12,6 +11,7 @@ export interface RespuestaVerificarCredenciales {
         nombre: string;
         correo: string;
         estado: boolean
+        primeraVez: boolean;
         token: string;
     };
     
@@ -49,6 +49,7 @@ export class VerificarCredenciales {
                     nombre: usuario.nombre.value,
                     correo: usuario.correo.value,
                     estado: usuario.estado.value,
+                    primeraVez: usuario.primeraVez.value,
                     token: tokenGenerado
                 },
                 

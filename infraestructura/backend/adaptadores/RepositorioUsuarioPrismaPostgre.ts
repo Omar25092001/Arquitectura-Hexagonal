@@ -6,6 +6,7 @@ import { Nombre } from '../../../dominio/usuario/objetosValor/Nombre';
 import { Correo } from '../../../dominio/usuario/objetosValor/Correo';
 import { Estado } from '../../../dominio/usuario/objetosValor/Estado';
 import { Contrasena } from '../../../dominio/usuario/objetosValor/Constrasena';
+import { PrimeraVez } from '../../../dominio/usuario/objetosValor/PrimeraVez';
 import { CreatedAt } from '../../../dominio/usuario/objetosValor/CreatedAt';
 import { UpdatedAt } from '../../../dominio/usuario/objetosValor/UpdatedAt';
 
@@ -27,7 +28,6 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
         nombre: usuario.nombre.value,
         correo: usuario.correo.value,
         contrasena: usuario.contrasena.value,
-        estado: true, // Asegúrate de incluir el estado
         // No es necesario especificar fechaCreacion y fechaActualizacion
         // ya que tienen valores por defecto en el esquema
       },
@@ -44,6 +44,7 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
       new Correo(usuario.correo),
       new Estado(usuario.estado), 
       new Contrasena(usuario.contrasena),
+      new PrimeraVez(usuario.primeraVez),
       new CreatedAt(usuario.fechaCreacion),
       new UpdatedAt(usuario.fechaActualizacion)
     ));
@@ -62,6 +63,7 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
       new Correo(usuario.correo),
       new Estado(usuario.estado),
       new Contrasena(usuario.contrasena),
+      new PrimeraVez(usuario.primeraVez),
       new CreatedAt(usuario.fechaCreacion),
       new UpdatedAt(usuario.fechaActualizacion)
     );
@@ -80,6 +82,7 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
       new Correo(usuario.correo),
       new Estado(usuario.estado),
       new Contrasena(usuario.contrasena),
+      new PrimeraVez(usuario.primeraVez),
       new CreatedAt(usuario.fechaCreacion),
       new UpdatedAt(usuario.fechaActualizacion)
     );
@@ -102,8 +105,19 @@ export class RepositorioUsuarioPrismaPostgre implements RepositorioUsuario {
         nombre: usuario.nombre.value,
         correo: usuario.correo.value,
         estado: usuario.estado.value,
+        primeraVez: usuario.primeraVez.value,
         contrasena: usuario.contrasena.value,
         // fechaActualizacion se actualiza automáticamente
+      },
+    });
+  }
+  
+  async editarPrimeraVezUsuario(id: UsuarioId, primeraVez: PrimeraVez, updatedAt: UpdatedAt): Promise<void> {
+    await this.prisma.usuario.update({
+      where: { id: id.value },
+      data: {
+        primeraVez: primeraVez.value,
+        fechaActualizacion: updatedAt.value
       },
     });
   }

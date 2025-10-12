@@ -79,7 +79,7 @@ const Login = () => {
                         onLogin(response.usuario.id, response.usuario.nombre, 'usuario', response.token);
                         console.log('Login attempt with:', { email, password });
                         setPopupTipo('exito');
-                        localStorage.setItem('tutorialPrimeraVez', 'true');
+                        localStorage.setItem('tutorialPrimeraVez', response.usuario.primeraVez);
                         localStorage.setItem('fromLogin', 'true');
                         setPopupMensaje('Inicio de sesión exitoso.');
                         navigate('/usuario/fuente-datos');
