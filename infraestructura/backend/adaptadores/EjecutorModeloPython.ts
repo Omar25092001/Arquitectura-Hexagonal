@@ -119,7 +119,7 @@ export class EjecutorModeloPython {
         }
     }
 
-    async predecir(usuarioId: string, nombreModelo: string, valores: number[], nPasos: number = 7): Promise<any> {
+    async predecir(usuarioId: string, nombreModelo: string, valores: number[], nPasos: number ): Promise<any> {
         return await this.ejecutar(usuarioId, nombreModelo, valores, { nPasos });
     }
 }

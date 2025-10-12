@@ -176,6 +176,7 @@ export default function ModalDetalleRegistro({
     const [ejecutando, setEjecutando] = useState(false);
     const [resultadoAlgoritmo, setResultadoAlgoritmo] = useState<ResultadoAlgoritmo | null>(null);
     const [errorEjecucion, setErrorEjecucion] = useState<string>('');
+    const [nPasos, setNPasos] = useState<number>(7);
 
     const { startTutorial, endTutorial, isActive } = useTutorial();
 
@@ -234,7 +235,7 @@ export default function ModalDetalleRegistro({
         const datosColumna = selectedData?._datosColumna as number[];
         const indiceFila = selectedData?._indiceFila as number;
 
-        // ❌ Si no hay datos reales, lanzar error
+        // Si no hay datos reales, lanzar error
         if (!datosColumna || datosColumna.length === 0) {
             throw new Error('No hay datos de columna disponibles');
         }
@@ -247,10 +248,10 @@ export default function ModalDetalleRegistro({
 
         if (rangoDireccion === 'arriba') {
             // TODOS los datos desde el inicio hasta el punto seleccionado (incluido)
-            valoresSeleccionados = datosColumna.slice(0, indiceFila + 1);
+            valoresSeleccionados = datosColumna.slice(0, indiceFila + 1).reverse();
         } else if (rangoDireccion === 'abajo') {
             // TODOS los datos desde el punto seleccionado hasta el final
-            valoresSeleccionados = datosColumna.slice(indiceFila);
+            valoresSeleccionados = datosColumna.slice(indiceFila).reverse();
         } else {
             throw new Error('Dirección de rango inválida');
         }
@@ -278,6 +279,15 @@ export default function ModalDetalleRegistro({
         setEjecutando(true);
         setResultadoAlgoritmo(null);
         setErrorEjecucion('');
+        const tipo = detectarTipoAlgoritmo(algoritmoSeleccionado);
+        // Validar nPasos si es predictivo
+        if (tipo === 'predictivo') {
+            if (nPasos < 1 || nPasos > 200) {
+                setErrorEjecucion('El número de pasos debe estar entre 1 y 200');
+                setEjecutando(false);
+                return;
+            }
+        }
 
         try {
             const tipo = detectarTipoAlgoritmo(algoritmoSeleccionado);
@@ -288,7 +298,7 @@ export default function ModalDetalleRegistro({
             try {
                 valoresParaAlgoritmo = obtenerValoresParaAlgoritmo();
             } catch (error: any) {
-                // ❌ Error específico de datos
+                //  Error específico de datos
                 setErrorEjecucion(`Error con los datos: ${error.message}`);
                 return;
             }
@@ -303,7 +313,7 @@ export default function ModalDetalleRegistro({
             // Agregar parámetros específicos según el tipo
             switch (tipo) {
                 case 'predictivo':
-                    payload.nPasos = 7;
+                    payload.nPasos = nPasos;
                     break;
                 case 'optimizacion':
                     payload.objetivo = 'maximizar';
@@ -474,6 +484,40 @@ export default function ModalDetalleRegistro({
                         >
                             {renderAlgorithmOptions()}
                         </select>
+                        {/* Input para nPasos solo si es predictivo */}
+                        {(() => {
+                            const algoritmoSeleccionado = algoritmos.find(alg => alg.id === selectedAlgorithm);
+                            const tipo = algoritmoSeleccionado ? detectarTipoAlgoritmo(algoritmoSeleccionado) : null;
+                            if (tipo === 'predictivo') {
+                                return (
+                                    <div className="mt-3">
+                                        <label className="text-gray-300 mb-2 block">Cantidad de pasos a predecir (máx 200):</label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={200}
+                                            value={nPasos === null ? '' : nPasos}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === '') {
+                                                    setNPasos(null as any);
+                                                } else {
+                                                    setNPasos(Number(val));
+                                                }
+                                            }}
+                                            onBlur={e => {
+                                                let val = Number(e.target.value);
+                                                if (isNaN(val) || val < 1) val = 1;
+                                                if (val > 200) val = 200;
+                                                setNPasos(val);
+                                            }}
+                                            className="w-full px-3 py-2 rounded-lg bg-background text-white border border-gray-600 focus:border-orange-400 focus:outline-none"
+                                        />
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
                     </div>
 
                     {/* Botón principal para ejecutar */}

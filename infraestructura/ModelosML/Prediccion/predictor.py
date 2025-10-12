@@ -76,7 +76,7 @@ def predecir_multiples(modelo, valores, n_pasos=7):
     return predicciones
 
 if __name__ == "__main__":
-    # ⏱️ INICIAR CRONÓMETRO AL INICIO DEL PROGRAMA
+    # INICIAR CRONÓMETRO AL INICIO DEL PROGRAMA
     tiempo_inicio = time.time()
     
     try:
@@ -87,10 +87,16 @@ if __name__ == "__main__":
         usuario_id = sys.argv[1]
         nombre_modelo = sys.argv[2]
         valores_str = sys.argv[3]
-        
-        # ✅ SIEMPRE 7 pasos, sin importar lo que venga como parámetro
-        n_pasos = 7
-        
+        # Leer n_pasos si se envía, si no usar 7 por defecto
+        if len(sys.argv) > 4:
+            try:
+                n_pasos = int(sys.argv[4])
+                if n_pasos < 1:
+                    raise ValueError()
+            except Exception:
+                n_pasos = 7
+        else:
+            n_pasos = 7
         print(f"PREDICTOR - Usuario: {usuario_id}, Modelo: {nombre_modelo}")
         print(f"Prediciendo los siguientes {n_pasos} valores")
         
@@ -108,7 +114,7 @@ if __name__ == "__main__":
         # Hacer predicciones (siempre 7)
         predicciones = predecir_multiples(modelo, valores, n_pasos)
         
-        # ⏱️ CALCULAR TIEMPO TRANSCURRIDO
+        # CALCULAR TIEMPO TRANSCURRIDO
         tiempo_fin = time.time()
         tiempo_ejecucion = round(tiempo_fin - tiempo_inicio, 4)  # 4 decimales
         
@@ -126,11 +132,11 @@ if __name__ == "__main__":
         print(json.dumps(resultado))
         
     except Exception as e:
-        # ⏱️ CALCULAR TIEMPO INCLUSO EN ERROR
+        # ⏱ CALCULAR TIEMPO INCLUSO EN ERROR
         tiempo_fin = time.time()
         tiempo_ejecucion = round(tiempo_fin - tiempo_inicio, 4)
         
-        # ❌ Resultado con error Y TIEMPO
+        #  Resultado con error Y TIEMPO
         resultado = {
             "success": False,
             "tipo": "predictivo",

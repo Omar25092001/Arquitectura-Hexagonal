@@ -57,26 +57,26 @@ def crear_datos_clasificacion(datos):
 def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
     columna_temperatura = "Temperatura interior - °C"
     print("="*60)
-    print("🚀 ENTRENAMIENTO DE MODELO")
-    print(f"📊 Tipo: {tipo_modelo.upper()}")
+    print(" ENTRENAMIENTO DE MODELO")
+    print(f" Tipo: {tipo_modelo.upper()}")
     print("="*60)
     
     try:
-        print("\n📂 Cargando datos del Excel...")
+        print("\n Cargando datos del Excel...")
         df = pd.read_excel(archivo_excel)
         temp_data = df[columna_temperatura].dropna().values
-        print(f"✅ {len(temp_data)} registros cargados")
+        print(f" {len(temp_data)} registros cargados")
     except Exception as e:
-        print(f"⚠️ Error cargando Excel: {e}")
-        print("📊 Usando datos simulados...")
+        print(f" Error cargando Excel: {e}")
+        print("Usando datos simulados...")
         np.random.seed(42)
         # Datos más realistas con tendencias
         temp_data = 20 + 5 * np.sin(np.arange(500) * 0.1) + np.random.normal(0, 1, 500)
         temp_data = np.clip(temp_data, 15, 30)  # Mantener en rango realista
-        print(f"✅ {len(temp_data)} registros simulados generados")
+        print(f" {len(temp_data)} registros simulados generados")
 
     # ✅ Crear datos según el tipo de modelo
-    print(f"\n🔄 Preparando datos para modelo {tipo_modelo}...")
+    print(f"\n Preparando datos para modelo {tipo_modelo}...")
     
     if tipo_modelo.lower() == "predictivo":
         X, y = crear_secuencias_temporales(temp_data, n_steps=5)
@@ -86,7 +86,7 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
             max_depth=3,
             random_state=42
         )
-        print("🎯 Objetivo: Predecir valores futuros")
+        print(" Objetivo: Predecir valores futuros")
         
     elif tipo_modelo.lower() == "optimizacion":
         X, y = crear_datos_optimizacion(temp_data)
@@ -96,7 +96,7 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
             max_depth=4,
             random_state=42
         )
-        print("🎯 Objetivo: Encontrar valores óptimos")
+        print("Objetivo: Encontrar valores óptimos")
         
     elif tipo_modelo.lower() == "clasificacion":
         X, y = crear_datos_clasificacion(temp_data)
@@ -106,7 +106,7 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
             max_depth=3,
             random_state=42
         )
-        print("🎯 Objetivo: Clasificar en categorías")
+        print(" Objetivo: Clasificar en categorías")
         print("   0: Frío (<18°C)")
         print("   1: Normal (18-25°C)")
         print("   2: Caliente (>25°C)")
@@ -121,12 +121,12 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
     print(f"✅ {len(X)} secuencias | Entrenamiento: {len(X_train)} | Prueba: {len(X_test)}")
 
     # Entrenar modelo
-    print(f"\n🤖 Entrenando modelo {tipo_modelo}...")
+    print(f"\n Entrenando modelo {tipo_modelo}...")
     modelo.fit(X_train, y_train)
-    print("✅ Modelo entrenado")
+    print(" Modelo entrenado")
 
-    # ✅ Evaluar según el tipo
-    print("\n📊 EVALUANDO MODELO:")
+    #  Evaluar según el tipo
+    print("\n EVALUANDO MODELO:")
     y_test_pred = modelo.predict(X_test)
     
     if tipo_modelo.lower() in ["predictivo", "optimizacion"]:
@@ -143,12 +143,12 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
         # Métricas de clasificación
         accuracy = accuracy_score(y_test, y_test_pred)
         print(f"   Precisión:   {accuracy:.4f}")
-        print("\n📋 Reporte detallado:")
+        print("\n Reporte detallado:")
         print(classification_report(y_test, y_test_pred, 
                                   target_names=['Frío', 'Normal', 'Caliente']))
 
-    # ✅ Guardar modelo en la carpeta correcta
-    print(f"\n💾 Guardando modelo {tipo_modelo}...")
+    #  Guardar modelo en la carpeta correcta
+    print(f"\n Guardando modelo {tipo_modelo}...")
     carpetas_tipos = {
         "predictivo": ("../../Prediccion", "ModelosPredictivos"),
         "optimizacion": ("../../Optimizacion", "ModelosOptimizacion"), 
@@ -163,21 +163,21 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
     
     if not os.path.exists(ruta_completa):
         os.makedirs(ruta_completa, exist_ok=True)
-        print(f"📁 Carpeta creada: {ruta_completa}")
+        print(f" Carpeta creada: {ruta_completa}")
 
     # Guardar con nombre específico
     nombre_archivo = f"{id_usuario}_{nombre_modelo}_{tipo_modelo.lower()}.pkl"
     ruta_modelo = os.path.join(ruta_completa, nombre_archivo)
     
     joblib.dump(modelo, ruta_modelo)
-    print(f"✅ Modelo guardado: {ruta_modelo}")
+    print(f" Modelo guardado: {ruta_modelo}")
     
     # ✅ Verificar que se guardó correctamente
     tamaño = os.path.getsize(ruta_modelo)
-    print(f"📊 Tamaño del archivo: {tamaño} bytes")
+    print(f"Tamaño del archivo: {tamaño} bytes")
     
-    # ✅ Hacer una predicción de prueba
-    print(f"\n🧪 PRUEBA DEL MODELO:")
+    #  Hacer una predicción de prueba
+    print(f"\n PRUEBA DEL MODELO:")
     ejemplo = X_test[0:1]  # Primer ejemplo de prueba
     prediccion = modelo.predict(ejemplo)
     
@@ -192,50 +192,50 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
         print(f"   Real: {y_test[0]:.4f}°C")
 
     print("\n" + "="*60)
-    print("🎉 ¡ENTRENAMIENTO COMPLETADO EXITOSAMENTE!")
+    print(" ¡ENTRENAMIENTO COMPLETADO EXITOSAMENTE!")
     print("="*60)
     
     return modelo
 
 if __name__ == "__main__":
-    print("🤖 SISTEMA DE ENTRENAMIENTO DE MODELOS ML")
+    print(" SISTEMA DE ENTRENAMIENTO DE MODELOS ML")
     print("="*60)
     
-    # ✅ Menú mejorado
-    print("\n📋 Tipos de modelo disponibles:")
-    print("1. 🔮 Predictivo    - Predice valores futuros de temperatura")
-    print("2. ⚡ Optimización - Encuentra los valores óptimos")
-    print("3. 🏷️  Clasificación - Clasifica temperaturas en categorías")
+    #  Menú mejorado
+    print("\n Tipos de modelo disponibles:")
+    print("1.  Predictivo    - Predice valores futuros de temperatura")
+    print("2.  Optimización - Encuentra los valores óptimos")
+    print("3.   Clasificación - Clasifica temperaturas en categorías")
     
     while True:
         try:
-            opcion = input("\n🎯 Seleccione el tipo (1-3): ").strip()
+            opcion = input("\n Seleccione el tipo (1-3): ").strip()
             if opcion == "1":
                 tipo_modelo = "predictivo"
-                print("✅ Seleccionado: Modelo Predictivo")
+                print(" Seleccionado: Modelo Predictivo")
                 break
             elif opcion == "2":
                 tipo_modelo = "optimizacion"
-                print("✅ Seleccionado: Modelo de Optimización")
+                print(" Seleccionado: Modelo de Optimización")
                 break
             elif opcion == "3":
                 tipo_modelo = "clasificacion"
-                print("✅ Seleccionado: Modelo de Clasificación")
+                print(" Seleccionado: Modelo de Clasificación")
                 break
             else:
-                print("❌ Opción inválida. Use 1, 2 o 3")
+                print(" Opción inválida. Use 1, 2 o 3")
         except KeyboardInterrupt:
-            print("\n👋 Entrenamiento cancelado")
+            print("\n Entrenamiento cancelado")
             exit(0)
 
     # Pedir información del modelo
-    print("\n📝 Información del modelo:")
-    id_usuario = input("🆔 ID de usuario: ").strip()
-    nombre_modelo = input("📛 Nombre del modelo: ").strip()
+    print("\n Información del modelo:")
+    id_usuario = input(" ID de usuario: ").strip()
+    nombre_modelo = input(" Nombre del modelo: ").strip()
 
     # Validar entradas
     if not id_usuario or not nombre_modelo:
-        print("❌ Error: El ID de usuario y nombre del modelo son obligatorios")
+        print(" Error: El ID de usuario y nombre del modelo son obligatorios")
         exit(1)
 
     # Buscar archivo Excel
@@ -244,17 +244,17 @@ if __name__ == "__main__":
     
     if archivos:
         archivo_excel = os.path.join(carpeta_archivos, archivos[0])
-        print(f"\n📁 Usando archivo: {archivos[0]}")
+        print(f"\n Usando archivo: {archivos[0]}")
     else:
-        print(f"\n⚠️ No se encontró archivo Excel en '{carpeta_archivos}'")
-        print("📊 Se usarán datos simulados")
+        print(f"\n No se encontró archivo Excel en '{carpeta_archivos}'")
+        print(" Se usarán datos simulados")
         archivo_excel = None
 
     try:
         modelo = entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo)
-        print(f"\n🚀 ¡Modelo '{nombre_modelo}' listo para usar!")
+        print(f"\n ¡Modelo '{nombre_modelo}' listo para usar!")
         
     except Exception as e:
-        print(f"\n❌ Error durante el entrenamiento: {e}")
+        print(f"\n Error durante el entrenamiento: {e}")
         import traceback
         traceback.print_exc()

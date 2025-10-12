@@ -21,7 +21,7 @@ export class ExpressAlgoritmoController {
     // ✅ Método actualizado con todos los parámetros
     ejecutar = async (req: any, res: any) => {
         try {
-            const { usuarioId, nombreModelo, valores, nPasos = 7 } = req.body;
+            const { usuarioId, nombreModelo, valores, nPasos } = req.body;
             
             // Validaciones básicas
             if (!usuarioId) {
