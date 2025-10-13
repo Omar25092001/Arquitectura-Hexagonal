@@ -59,10 +59,10 @@ const Login = () => {
                 contrasena: password
             };
             const response = await loginUsuario(usuario);
+            const correoAdmin = import.meta.env.VITE_CORREO_ADMIN
             if (response.message == 'Login exitoso') {
-                if (response.usuario.correo == 'admin@gmail.com') {
-                    console.log('Login attempt with:', { email, password });
-                    onLogin(response.usuario.id, response.usuario.nombre, 'admin', response.token);
+                if (response.usuario.correo == correoAdmin) {
+                    onLogin(response.usuario.id, response.usuario.nombre, 'admin', response.usuario.token);
                     setPopupTipo('exito');
                     setPopupMensaje('Inicio de sesión exitoso.');
                     navigate('/admin/dashboard');
@@ -76,7 +76,7 @@ const Login = () => {
                         return;
                     }
                     else {
-                        onLogin(response.usuario.id, response.usuario.nombre, 'usuario', response.token);
+                        onLogin(response.usuario.id, response.usuario.nombre, 'usuario', response.usuario.token);
                         console.log('Login attempt with:', { email, password });
                         setPopupTipo('exito');
                         localStorage.setItem('tutorialPrimeraVez', response.usuario.primeraVez);

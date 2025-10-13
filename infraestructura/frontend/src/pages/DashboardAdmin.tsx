@@ -20,7 +20,6 @@ export default function DashboardAdmin() {
         setLoading(true);
         try {
             const response = await obtenerUsuarios();
-            console.log('Respuesta del backend:', response);
             // Mapear la respuesta del backend a la estructura que espera tu componente
             const usuariosMapeados: Usuario[] = response.data.map((item: any) => ({
                 id: item.usuario.id,
@@ -125,7 +124,7 @@ export default function DashboardAdmin() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-400 text-sm">Usuarios Activos</p>
-                                <p className="text-2xl font-bold text-green-400">{usuariosActivos}</p>
+                                <p className="text-2xl font-bold text-green-400">{usuariosActivos-1}</p>
                             </div>
                             <div className="bg-green-500/20 p-3 rounded-lg">
                                 <Activity className="w-6 h-6 text-green-400" />

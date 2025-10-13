@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { ExpressAlgoritmoController } from '../controllers/ExpressAlgoritmoController';
 import authMiddleware from '../middlewares/authMiddleware';
+
 const router = Router();
 const controller = new ExpressAlgoritmoController();
 
-router.get('/:usuarioId',authMiddleware, controller.obtenerAlgoritmos);
-// Protección: requerir token para ejecutar algoritmos
+// Ejemplo: proteger la ruta de ejecución con el middleware
 router.post('/ejecutar', authMiddleware, controller.ejecutar);
 
-export const ExpressAlgoritmoRouter = router;
+export default router;

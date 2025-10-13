@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from './api';
 
 const API_URL = import.meta.env.VITE_API_ENDPOINT;
 
@@ -22,8 +22,7 @@ export type Algoritmo = {
 
 export async function obtenerAlgoritmos(usuarioId: string) {
     try {
-        const response = await axios.get(`${API_URL}/api/algoritmos/${usuarioId}`);
-        console.log(response.data)
+        const response = await api.get(`${API_URL}/api/algoritmos/${usuarioId}`);
         return response.data;
     } catch (error) {
         console.error('Error al obtener los algoritmos:', error);
@@ -33,8 +32,7 @@ export async function obtenerAlgoritmos(usuarioId: string) {
 
 export async function ejecutarAlgoritmo(datos: DatosPrediccion) {
     try {
-        const response = await axios.post(`${API_URL}/api/algoritmos/ejecutar`, datos);
-        console.log(response.data)
+        const response = await api.post(`${API_URL}/api/algoritmos/ejecutar`, datos);
         return response.data;
     } catch (error) {
         console.error('Error al ejecutar el algoritmo:', error);

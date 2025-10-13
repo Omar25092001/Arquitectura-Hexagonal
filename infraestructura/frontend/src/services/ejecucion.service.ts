@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from './api';
 
 const API_URL = import.meta.env.VITE_API_ENDPOINT;
 
@@ -29,8 +29,8 @@ export interface CrearEjecucionRequest {
 // Obtener todas las ejecuciones
 export async function obtenerEjecuciones(): Promise<EjecucionAlgoritmo[]> {
     try {
-        const response = await axios.get(`${API_URL}/api/ejecuciones`);
-        return response.data.data; // Asumiendo que viene en response.data.data
+        const response = await api.get(`${API_URL}/api/ejecuciones`);
+        return response.data.data;
     } catch (error) {
         console.error('Error al obtener ejecuciones:', error);
         throw error;
@@ -40,7 +40,7 @@ export async function obtenerEjecuciones(): Promise<EjecucionAlgoritmo[]> {
 // Obtener ejecuciones por usuario
 export async function obtenerEjecucionesPorUsuario(usuarioId: string): Promise<EjecucionAlgoritmo[]> {
     try {
-        const response = await axios.get(`${API_URL}/api/ejecuciones/usuario/${usuarioId}`);
+        const response = await api.get(`${API_URL}/api/ejecuciones/usuario/${usuarioId}`);
         return response.data.data;
     } catch (error) {
         console.error('Error al obtener ejecuciones del usuario:', error);
@@ -51,7 +51,7 @@ export async function obtenerEjecucionesPorUsuario(usuarioId: string): Promise<E
 // Crear ejecución manualmente
 export async function crearEjecucion(datos: CrearEjecucionRequest): Promise<any> {
     try {
-        const response = await axios.post(`${API_URL}/api/ejecuciones`, datos);
+        const response = await api.post(`${API_URL}/api/ejecuciones`, datos);
         return response.data;
     } catch (error) {
         console.error('Error al crear ejecución:', error);
