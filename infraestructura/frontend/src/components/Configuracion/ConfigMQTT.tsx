@@ -167,7 +167,7 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
                <button
                     onClick={ProbarConexionMQTT}
                     disabled={connectionState === 'testing' || !camposObligatoriosCompletos()}
-                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center transition-colors
+                    className={`px-4 py-2 rounded-lg text-white font-medium flex items-center tutorial-test-button transition-colors
                     ${connectionState === 'testing' || !camposObligatoriosCompletos()
                             ? 'bg-gray-600 cursor-not-allowed'
                             : 'bg-orange-400 hover:bg-orange-500'}`}

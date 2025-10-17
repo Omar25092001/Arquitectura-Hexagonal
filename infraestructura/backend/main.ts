@@ -1,5 +1,4 @@
 import express, { NextFunction,Request,Response } from 'express';
-import {ExpressClimaRouter} from './routes/ExpressClimaRouter';
 import {ExpressUsuarioRouter} from './routes/ExpressUsuarioRouter';
 import {ExpressAlgoritmoRouter} from './routes/ExpressAlgoritmoRouter';
 import ExpressEjecucionAlgoritmoRouter from './routes/ExpressEjecucionAlgoritmoRouter';
@@ -13,7 +12,6 @@ app.use(cors());
 app.use(express.json());
 
 
-app.use(ExpressClimaRouter);
 app.use('/api/usuarios', ExpressUsuarioRouter);
 app.use('/api/algoritmos', ExpressAlgoritmoRouter);
 app.use('/api/ejecuciones', ExpressEjecucionAlgoritmoRouter);
