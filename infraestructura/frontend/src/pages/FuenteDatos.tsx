@@ -72,7 +72,7 @@ export default function FuenteDatos() {
         }
     ];
     
-    // ✅ PRIMER USEEFFECT: Solo para limpieza inicial (SIN startTutorial como dependencia)
+    // PRIMER USEEFFECT: Solo para limpieza inicial (SIN startTutorial como dependencia)
     useEffect(() => {
         console.log('FuenteDatos montado - Iniciando limpieza...');
         
@@ -107,7 +107,7 @@ export default function FuenteDatos() {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, []); // ✅ Array vacío - solo se ejecuta una vez al montar
+    }, []); // Array vacío - solo se ejecuta una vez al montar
 
 
     useEffect(() => {

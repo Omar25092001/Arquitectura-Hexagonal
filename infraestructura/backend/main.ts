@@ -2,6 +2,7 @@ import express, { NextFunction,Request,Response } from 'express';
 import {ExpressUsuarioRouter} from './routes/ExpressUsuarioRouter';
 import {ExpressAlgoritmoRouter} from './routes/ExpressAlgoritmoRouter';
 import ExpressEjecucionAlgoritmoRouter from './routes/ExpressEjecucionAlgoritmoRouter';
+import { xmiRouter } from './routes/xmi.routes';
 import cors from 'cors';
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use('/api/usuarios', ExpressUsuarioRouter);
 app.use('/api/algoritmos', ExpressAlgoritmoRouter);
 app.use('/api/ejecuciones', ExpressEjecucionAlgoritmoRouter);
+app.use('/api/xmi', xmiRouter);
 
 app.use((err: unknown, req: Request, res: Response, next: NextFunction): void => {
     if (err instanceof Error) {

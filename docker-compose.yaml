@@ -1,0 +1,85 @@
+version: '3.9'
+
+services:
+  # 1. BACKEND (Node.js + Python)
+  backend:
+    container_name: mi-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      # Expone el puerto 3000 de tu app
+      - "4000:3000"
+    depends_on:
+      - postgres-db
+      - influx-db
+    networks:
+      - app-network
+    command: sh -c "npx prisma migrate deploy --schema=./infraestructura/backend/prisma/schema.prisma && npx prisma generate --schema=./infraestructura/backend/prisma/schema.prisma && node dist/infraestructura/backend/main.js"
+
+  # 2. FRONTEND (React + Nginx)
+  frontend:
+    container_name: mi-frontend
+    build:
+      context: ./infraestructura/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  # 3. BASE DE DATOS POSTGRES
+  postgres-db:
+    container_name: postgres-db
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # 4. BASE DE DATOS INFLUXDB
+  influx-db:
+    container_name: influx-db
+    image: influxdb:2.7
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN}
+    volumes:
+      - influx-data:/var/lib/influxdb2
+    ports:
+      - "8086:8086"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # 5. ADMIN DE BBDD (Opcional)
+  adminer:
+    container_name: db-adminer
+    image: adminer
+    ports:
+      - "8081:8080"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  influx-data:
+
+networks:
+  app-network:

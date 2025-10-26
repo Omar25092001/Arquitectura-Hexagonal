@@ -56,7 +56,7 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                 };
             }
 
-            console.log('🔍 Probando conexión HTTP:', {
+            console.log('Probando conexión HTTP:', {
                 url: urlCompleta,
                 method: config.method,
                 hasAuth: !!config.password
@@ -75,7 +75,7 @@ const ConfigHTTP = ({ onConnectionStateChange, onConfigChange }: ConfigHTTPProps
                     url: urlCompleta,
                     headers: requestOptions.headers
                 };
-                console.log('📝 Actualizando configuración http:', configCompleta);
+                console.log('Actualizando configuración http:', configCompleta);
                 onConfigChange?.(configCompleta);
 
             } else {

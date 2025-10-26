@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<invernadero:Invernadero
+    xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:invernadero="http://org.example.invernadero"
+    id="INV-001"
+    nombre="Invernadero Tomate Experimental"
+    area="600.0"
+    tipoInvernadero="nave">
+
+  <!-- UbicacionGeografica -->
+  <ubicacion latitud="41.3851" longitud="2.1734" altitud="15.0"/>
+
+  <!-- Cultivo -->
+  <cultivo especie="Solanum lycopersicum" variedad="Cherry" fechaSiembra="2024-02-10T00:00:00" etapaCrecimiento="fructificacion">
+    <condicionesIdeales variable="TEMPERATURA" valorMinimo="20.0" valorMaximo="28.0" valorOptimo="24.0"/>
+    <condicionesIdeales variable="HUMEDAD" valorMinimo="60.0" valorMaximo="80.0" valorOptimo="70.0"/>
+    <condicionesIdeales variable="CO2" valorMinimo="800.0" valorMaximo="1200.0" valorOptimo="1000.0"/>
+  </cultivo>
+
+  <!-- Zonas -->
+  <zonas id="ZONA-A" nombre="Zona Norte" area="300.0">
+    <sensores id="TEMP-A1" tipo="TEMPERATURA" unidad="°C">
+      <mediciones marcaTiempo="2024-04-05T15:00:00" valor="29.8"/>
+      <mediciones marcaTiempo="2024-04-05T15:05:00" valor="30.1"/>
+      <mediciones marcaTiempo="2024-04-05T15:10:00" valor="21.1"/>
+      <mediciones marcaTiempo="2024-04-05T15:15:00" valor="22.1"/>
+      <mediciones marcaTiempo="2024-04-05T15:15:00" valor="20.1"/>
+      <mediciones marcaTiempo="2024-04-05T15:15:00" valor="18.1"/>
+      <mediciones marcaTiempo="2024-04-05T15:15:00" valor="19.1"/>
+      <mediciones marcaTiempo="2024-04-05T15:15:00" valor="18.1"/>
+      
+    </sensores>
+    
+    <sensores id="HUM-A1" tipo="HUMEDAD" unidad="%">
+      <mediciones marcaTiempo="2024-04-05T15:05:00" valor="68.0"/>
+    </sensores>
+    <actuadores id="VENT-A1" tipo="VENTILACION" estado="false" valor="0.0"/>
+    <actuadores id="LUZ-A1" tipo="ILUMINACION_ARTIFICIAL" estado="true" valor="0.7"/>
+    <politicasControl id="POL-VENT-A" nombre="Control temperatura Zona A" logica="SI temperatura > 28 ENTONCES activar VENT-A1"/>
+  </zonas>
+
+  <zonas id="ZONA-B" nombre="Zona Sur" area="300.0">
+    <sensores id="TEMP-B1" tipo="TEMPERATURA" unidad="°C">
+      <mediciones marcaTiempo="2024-04-05T15:05:00" valor="27.5"/>
+    </sensores>
+    <actuadores id="RIEGO-B1" tipo="RIEGO" estado="false" valor="0.0"/>
+    <politicasControl id="POL-RIEGO-B" nombre="Riego programado Zona B" logica="CADA DIA A LAS 07:00 POR 15 MIN"/>
+  </zonas>
+
+  <!-- Sensores a nivel de invernadero -->
+  <sensores id="CO2-INV" tipo="CO2" unidad="ppm">
+    <mediciones marcaTiempo="2024-04-05T15:05:00" valor="920.0"/>
+  </sensores>
+
+  <!-- Actuadores a nivel de invernadero -->
+  <actuadores id="CALOR-INV" tipo="CALEFACCION" estado="false" valor="0.0"/>
+  <actuadores id="INYECTOR-CO2" tipo="INYECTOR_CO2" estado="true" valor="0.3"/>
+
+  <!-- Politicas globales -->
+  <politicasControl id="POL-CO2-GLOBAL" nombre="Mantenimiento CO2" logica="SI co2 menorque 900 ENTONCES activar INYECTOR-CO2"/>
+
+  <!-- Instancia del Gemelo Digital -->
+  <instanciaGemeloDigital idInvernadero="INV-001" ultimaSincronizacion="2024-04-05T15:05:00" estado="critico"/>
+
+</invernadero:Invernadero>
