@@ -18,7 +18,7 @@ services:
     networks:
       - app-network
     command: sh -c "npx prisma migrate deploy --schema=./infraestructura/backend/prisma/schema.prisma && npx prisma generate --schema=./infraestructura/backend/prisma/schema.prisma && node dist/infraestructura/backend/main.js"
-
+    restart: unless-stopped
   # 2. FRONTEND (React + Nginx)
   frontend:
     container_name: mi-frontend

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, X, Filter } from 'lucide-react';
+import { Calendar, Clock, Filter } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 
 interface SeleccionarRangoFechaProps {

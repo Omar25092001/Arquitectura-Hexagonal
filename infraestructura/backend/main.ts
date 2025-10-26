@@ -4,6 +4,9 @@ import {ExpressAlgoritmoRouter} from './routes/ExpressAlgoritmoRouter';
 import ExpressEjecucionAlgoritmoRouter from './routes/ExpressEjecucionAlgoritmoRouter';
 import { xmiRouter } from './routes/xmi.routes';
 import cors from 'cors';
+import { ServiceContainer } from '../../Shared/infraestructura/ServiceContainer';
+import { randomUUID } from 'crypto';
+import { CorreoDuplicado } from '../../dominio/usuario/erroresDominio/CorreoDuplicado';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -30,6 +33,37 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction): void =>
 
 
 // Inicia el servidor
-app.listen(port, () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
+// Crea (de forma idempotente) un usuario admin al iniciar el backend
+async function ensureAdminUser() {
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@local';
+    const adminPass = process.env.ADMIN_PASS || 'admin123';
+    const adminName = process.env.ADMIN_NAME || 'Administrador';
+    try {
+        await ServiceContainer.usuario.crearUsuario.run(
+            randomUUID(),
+            adminName,
+            adminEmail,
+            true, // estado
+            adminPass,
+            false, // primeraVez: false para no mostrar onboarding al admin
+            new Date(),
+            new Date()
+        );
+        console.log('Usuario admin creado:', adminEmail);
+    } catch (err: unknown) {
+        if (err instanceof CorreoDuplicado) {
+            console.log('Usuario admin ya existe:', adminEmail);
+        } else {
+            console.error('Error creando usuario admin:', err);
+        }
+    }
+}
+
+ensureAdminUser().then(() => {
+    app.listen(port, () => {
+        console.log(`Servidor corriendo en http://localhost:${port}`);
+    });
+}).catch(err => {
+    console.error('Error durante la inicialización:', err);
+    process.exit(1);
 });

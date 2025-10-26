@@ -107,7 +107,7 @@ export class ExpressUsuarioController {
     editarUsuario = async (req: any, res: any) => {
         try {
             const { id } = req.params;
-            const { nombre, correo, estado, contrasena } = req.body;
+            const { nombre, correo, estado, contrasena, primeraVez } = req.body;
             const updatedAt = new Date();
             await ServiceContainer.usuario.editarUsuario.run(
                 id,
@@ -115,6 +115,7 @@ export class ExpressUsuarioController {
                 correo,
                 estado,
                 contrasena,
+                primeraVez,
                 updatedAt
             );
             return res.status(200).json({ message: "Usuario actualizado exitosamente" });
