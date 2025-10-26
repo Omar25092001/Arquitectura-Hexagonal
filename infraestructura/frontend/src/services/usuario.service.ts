@@ -1,4 +1,4 @@
-import axios from 'axios';
+
 import api from './api';
 
 const API_URL = import.meta.env.VITE_API_ENDPOINT;
@@ -20,7 +20,7 @@ export async function registrarUsuario() {
 
 export async function loginUsuario(usuario: UsuarioLogin) {
     try {
-        const response = await axios.post(`${API_URL}/api/usuarios/login`, usuario);
+        const response = await api.post(`${API_URL}/api/usuarios/login`, usuario);
         return response.data;
     } catch (error) {
         console.error('Error al iniciar sesión:', error);

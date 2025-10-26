@@ -35,8 +35,8 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction): void =>
 // Inicia el servidor
 // Crea (de forma idempotente) un usuario admin al iniciar el backend
 async function ensureAdminUser() {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@local';
-    const adminPass = process.env.ADMIN_PASS || 'admin123';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+    const adminPass = process.env.ADMIN_PASS || 'Admin25*';
     const adminName = process.env.ADMIN_NAME || 'Administrador';
     try {
         await ServiceContainer.usuario.crearUsuario.run(
