@@ -4,6 +4,7 @@ import { UsuarioId } from "../../../dominio/usuario/objetosValor/UsuarioId";
 import { Correo } from "../../../dominio/usuario/objetosValor/Correo";
 import { Estado } from "../../../dominio/usuario/objetosValor/Estado";
 import { Contrasena } from "../../../dominio/usuario/objetosValor/Constrasena";
+import { PrimeraVez } from "../../../dominio/usuario/objetosValor/PrimeraVez";
 import { Nombre } from "../../../dominio/usuario/objetosValor/Nombre";
 import { UpdatedAt } from "../../../dominio/usuario/objetosValor/UpdatedAt";
 import { Hasheo } from "../../../dominio/usuario/servicios/Hasheo";
@@ -20,6 +21,7 @@ export class EditarUsuario {
         correo: string,
         estado: boolean,
         contrasena: string,
+        primeraVez: boolean,
         updatedAt: Date
     ): Promise<void> {
         // Verifica si el usuario existe
@@ -39,6 +41,7 @@ export class EditarUsuario {
             new Correo(correo),
             new Estado(estado),
             new Contrasena(contrasenaHasheada),
+            new PrimeraVez(primeraVez),
             usuarioExistente.createdAt, // Mantiene la fecha de creación original
             new UpdatedAt(updatedAt)
         );
