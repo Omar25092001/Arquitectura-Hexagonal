@@ -10,29 +10,48 @@ import { CreatedAt } from '../../../dominio/xmi/objetosValor/CreatedAt';
 export class RepositorioXmiFileSystem implements RepositorioXmi {
 
     private readonly PROYECTO_ROOT = process.cwd();
-    private readonly RUTA_PLANTILLA = path.resolve(this.PROYECTO_ROOT, "xmi/plantilla.xmi");
+    // RUTA_BASE_XMI ahora apunta a la carpeta 'xmi'
     private readonly RUTA_BASE_XMI = path.resolve(this.PROYECTO_ROOT, "xmi");
 
-    constructor() {}
+    // Eliminamos la plantilla, ya que solo creamos carpetas
+    // private readonly RUTA_PLANTILLA = ...
+
+    constructor() {
+        // Asegurarnos de que la carpeta 'xmi' base exista al iniciar
+        this.asegurarCarpetaBase();
+    }
+
+    private async asegurarCarpetaBase(): Promise<void> {
+        try {
+            await fs.mkdir(this.RUTA_BASE_XMI, { recursive: true });
+        } catch (error) {
+            console.error("Error al crear la carpeta XMI base:", error);
+        }
+    }
+
+    
 
     /**
-     * Crea la carpeta del usuario.
+     * Crea la estructura de carpetas anidada para la sesión.
      */
     async crear(sesion: SesionXMI): Promise<void> {
-        // rutaRelativa es "id_usuario/id_sesion.xmi"
+        
+        // Asumimos que rutaArchivo.value es "ID_USUARIO/ID_SESION"
         const rutaRelativa = sesion.rutaArchivo.value;
+        
+        // Esto será "C:\...\proyecto\xmi\ID_USUARIO\ID_SESION"
         const rutaDestinoAbsoluta = path.join(this.RUTA_BASE_XMI, rutaRelativa);
-        // dirDestino es "C:\...\src\xmi\id_usuario"
-        const dirDestino = path.dirname(rutaDestinoAbsoluta);
+
+        // Problema anterior: path.dirname(rutaDestinoAbsoluta) solo creaba "C:\...\proyecto\xmi\ID_USUARIO"
+        // const dirDestino = path.dirname(rutaDestinoAbsoluta); 
 
         try {
-            // 1. Asegurar que el directorio del usuario exista
-            await fs.mkdir(dirDestino, { recursive: true });
+            // 1. --- ¡CAMBIO CLAVE! ---
+            // Usamos la ruta absoluta directa. { recursive: true }
+            // creará "ID_USUARIO" y "ID_SESION" si no existen.
+            await fs.mkdir(rutaDestinoAbsoluta, { recursive: true });
 
-            // 2. Línea de copiar archivo ELIMINADA
-            // await fs.copyFile(this.RUTA_PLANTILLA, rutaDestinoAbsoluta);
-
-            console.log(`[RepositorioXmiFileSystem] Directorio creado/verificado: ${dirDestino}`);
+            console.log(`[RepositorioXmiFileSystem] Directorio de sesión creado: ${rutaDestinoAbsoluta}`);
 
         } catch (error) { // 'error' es 'unknown'
             console.error("[RepositorioXmiFileSystem] Error al crear directorio:", error);
@@ -45,32 +64,40 @@ export class RepositorioXmiFileSystem implements RepositorioXmi {
     }
 
     /**
-     * Busca si un archivo XMI ya existe.
+     * Busca si un directorio de sesión ya existe.
      */
     async buscarPorId(id: SesionXmiId, usuarioId: UsuarioId): Promise<SesionXMI | null> {
         
-        const nombreArchivo = `${id.value}.xmi`;
-        const rutaString = `${usuarioId.value}/${nombreArchivo}`;
+        // --- ¡CAMBIO CLAVE! ---
+        // Ya no buscamos un archivo ".xmi", buscamos la carpeta de sesión.
+        // rutaString será "ID_USUARIO/ID_SESION"
+        const rutaString = path.join(usuarioId.value, id.value);
         const rutaAbsoluta = path.join(this.RUTA_BASE_XMI, rutaString);
 
         try {
-            // Esto comprueba si el ARCHIVO existe
+            // Esto comprueba si la RUTA (carpeta) existe
             const stats = await fs.stat(rutaAbsoluta);
+            
+            // Verificamos que sea un directorio
+            if (!stats.isDirectory()) {
+                 console.warn(`[RepositorioXmiFileSystem] Se encontró una ruta pero no es un directorio: ${rutaAbsoluta}`);
+                 return null;
+            }
             
             return new SesionXMI(
                 id,
                 usuarioId,
-                new RutaArchivo(rutaString),
+                new RutaArchivo(rutaString), // Guardamos la ruta relativa "ID_USUARIO/ID_SESION"
                 new CreatedAt(stats.birthtime) 
             );
 
         } catch (error) { // 'error' es 'unknown'
             
             if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') {
-                return null; // El archivo no existe
+                return null; // El directorio no existe
             }
             
-            console.error("[RepositorioXmiFileSystem] Error al buscar archivo:", error);
+            console.error("[RepositorioXmiFileSystem] Error al buscar directorio:", error);
             throw error; 
         }
     }

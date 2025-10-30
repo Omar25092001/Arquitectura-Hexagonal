@@ -8,7 +8,7 @@ const controller = new ExpressUsuarioController();
 
 // Definir rutas para usuarios
 router.post('/',authMiddleware, controller.crearUsuario);
-router.get('/usuarios',authMiddleware, controller.listarUsuarios);
+router.get('/usuarios', controller.listarUsuarios);
 router.post('/login', controller.login);
 router.put('/:id',authMiddleware ,controller.editarUsuario);
 router.patch('/estado/:id',authMiddleware , controller.editarEstadoUsuario);

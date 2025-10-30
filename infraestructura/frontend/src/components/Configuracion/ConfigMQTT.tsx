@@ -36,7 +36,7 @@ const ConfigMQTT = ({ onConnectionStateChange, onConfigChange }: ConfigMQTTProps
             clearTimeout(timeoutRef.current);
         }
 
-        const url = `ws://${mqttConfig.ip}`;
+        const url = `wss://${mqttConfig.ip}`;
         const opcionesConexion: mqtt.IClientOptions = {
             username: mqttConfig.username,
             password: mqttConfig.password,

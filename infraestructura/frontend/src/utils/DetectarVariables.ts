@@ -38,7 +38,7 @@ export async function detectarVariablesMQTT(config: any): Promise<any[]> {
             reject(new Error('No se recibieron mensajes en 30 segundos'));
         }, 30000);
 
-        const client = mqtt.connect(`ws://${config.ip}`, {
+        const client = mqtt.connect(`wss://${config.ip}`, {
             username: config.username || undefined,
             password: config.password || undefined,
         });

@@ -15,10 +15,5 @@ export class VariableSeleccionada {
             throw new Error('VariableSeleccionada no puede exceder 100 caracteres');
         }
 
-        // Validar que solo contenga caracteres válidos para nombres de columna
-        const caracteresValidos = /^[a-zA-Z0-9_-]+$/;
-        if (!caracteresValidos.test(this.value)) {
-            throw new Error('VariableSeleccionada solo puede contener letras, números, guiones y guiones bajos');
-        }
     }
 }

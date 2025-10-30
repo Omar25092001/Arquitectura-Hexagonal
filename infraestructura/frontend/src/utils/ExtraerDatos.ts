@@ -11,7 +11,7 @@ export function conectarMQTT(
 ) {
     if (!config) return;
     try {
-        const client: any = mqtt.connect(`ws://${config.ip}`, {
+        const client: any = mqtt.connect(`wss://${config.ip}`, {
             username: config.username || undefined,
             password: config.password || undefined,
         });
