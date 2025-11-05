@@ -25,7 +25,7 @@ export const TutorialModalAlgoritmo: Tutorial = {
             title: 'Selecciona el algoritmo',
             content: 'Elige el algoritmo que deseas aplicar sobre los datos seleccionados.',
             target: '.modal-algorithm-select',
-            placement: 'left', // ✅ Correcto
+            placement: 'left', //   Correcto
             waitForElement: true
         },
         {
@@ -33,7 +33,7 @@ export const TutorialModalAlgoritmo: Tutorial = {
             title: 'Ejecuta el algoritmo',
             content: 'Haz clic en este botón para ejecutar el algoritmo sobre el rango de datos seleccionado.',
             target: '.modal-algorithm-run',
-            placement: 'top', // ✅ Correcto
+            placement: 'top', //   Correcto
             waitForElement: true
         },
         {
@@ -41,7 +41,7 @@ export const TutorialModalAlgoritmo: Tutorial = {
             title: 'Resultados del algoritmo',
             content: 'Aquí verás los resultados generados por el algoritmo.',
             target: '.modal-algorithm-results',
-            placement: 'top', // ✅ Correcto
+            placement: 'top', //   Correcto
             waitForElement: true
         }
     ]

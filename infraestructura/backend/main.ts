@@ -2,7 +2,7 @@ import express, { NextFunction,Request,Response } from 'express';
 import {ExpressUsuarioRouter} from './routes/ExpressUsuarioRouter';
 import {ExpressAlgoritmoRouter} from './routes/ExpressAlgoritmoRouter';
 import ExpressEjecucionAlgoritmoRouter from './routes/ExpressEjecucionAlgoritmoRouter';
-import { xmiRouter } from './routes/xmi.routes';
+import { xmiRouter } from './routes/xmi.Router';
 import cors from 'cors';
 import { ServiceContainer } from '../../Shared/infraestructura/ServiceContainer';
 import { randomUUID } from 'crypto';

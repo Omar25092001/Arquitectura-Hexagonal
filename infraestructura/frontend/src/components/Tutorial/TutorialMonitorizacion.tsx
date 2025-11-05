@@ -26,7 +26,7 @@ export const TutorialMonitorizacion:Tutorial = {
             title: 'Monitorización de Variables',
             content: 'Aquí puedes asociar cada variable estándar con la variable recibida de tus sensores.',
             target: '.monitor-title',
-            placement: 'bottom', // ✅ Correcto
+            placement: 'bottom', //   Correcto
             waitForElement: true
         },
         {
@@ -34,7 +34,7 @@ export const TutorialMonitorizacion:Tutorial = {
             title: 'Selecciona la variable',
             content: 'Selecciona la variable de tus sensores que corresponde a cada estándar. Esta será usada para la monitorización y alertas.',
             target: '.monitor-select-variable',
-            placement: 'left', // ✅ Correcto
+            placement: 'left', //   Correcto
             waitForElement: true
         },
         {
@@ -42,7 +42,7 @@ export const TutorialMonitorizacion:Tutorial = {
             title: 'Configura los rangos',
             content: 'Define los valores críticos, bajos y óptimos para cada variable. Estos rangos permiten generar alertas y visualizar el estado.',
             target: '.monitor-rangos',
-            placement: 'top', // ✅ Correcto
+            placement: 'top', //   Correcto
             waitForElement: true
         },
         {
@@ -50,7 +50,7 @@ export const TutorialMonitorizacion:Tutorial = {
             title: 'Confirmar asignaciones',
             content: 'Haz clic aquí para guardar tus asignaciones y comenzar la monitorización.',
             target: '.monitor-confirm',
-            placement: 'top', // ✅ Correcto
+            placement: 'top', //   Correcto
             waitForElement: true
         }
     ]

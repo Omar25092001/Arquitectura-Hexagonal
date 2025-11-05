@@ -1,4 +1,3 @@
-// Eliminamos la importación de 'SistemaArchivos'
 import { RepositorioXmi } from "../../dominio/RepositorioXmi";
 import { SesionXMI } from "../../dominio/xmi/SesionXMI";
 import { SesionXmiId } from "../../dominio/xmi/objetosValor/SesionXmiId";

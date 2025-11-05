@@ -75,7 +75,7 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
         temp_data = np.clip(temp_data, 15, 30)  # Mantener en rango realista
         print(f" {len(temp_data)} registros simulados generados")
 
-    # ✅ Crear datos según el tipo de modelo
+    #   Crear datos según el tipo de modelo
     print(f"\n Preparando datos para modelo {tipo_modelo}...")
     
     if tipo_modelo.lower() == "predictivo":
@@ -118,7 +118,7 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
-    print(f"✅ {len(X)} secuencias | Entrenamiento: {len(X_train)} | Prueba: {len(X_test)}")
+    print(f"  {len(X)} secuencias | Entrenamiento: {len(X_train)} | Prueba: {len(X_test)}")
 
     # Entrenar modelo
     print(f"\n Entrenando modelo {tipo_modelo}...")
@@ -172,7 +172,7 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
     joblib.dump(modelo, ruta_modelo)
     print(f" Modelo guardado: {ruta_modelo}")
     
-    # ✅ Verificar que se guardó correctamente
+    #   Verificar que se guardó correctamente
     tamaño = os.path.getsize(ruta_modelo)
     print(f"Tamaño del archivo: {tamaño} bytes")
     

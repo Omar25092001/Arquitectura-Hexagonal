@@ -5,8 +5,8 @@ import { CheckCircle, ArrowRight, Check, X, RefreshCw, ArrowLeft, HelpCircle } f
 import { useNavigate } from 'react-router-dom';
 import ModalProtocolos from '../components/Variables/ModalProtocolos';
 import { useExcelFileSection } from "@/components/shared/ExcelFileSectionContext";
-import { useTutorial } from '../components/Tutorial/TutorialContext'; // ✅ AÑADIR
-import { TutorialVariables } from '../components/Tutorial/TutorialVariables'; // ✅ AÑADIR
+import { useTutorial } from '../components/Tutorial/TutorialContext'; //   AÑADIR
+import { TutorialVariables } from '../components/Tutorial/TutorialVariables'; //   AÑADIR
 
 import {
     detectarVariablesMQTT,
@@ -18,7 +18,7 @@ import {
 
 export default function Variables() {
     const navigate = useNavigate();
-    const { startTutorial } = useTutorial(); // ✅ AÑADIR
+    const { startTutorial } = useTutorial(); //   AÑADIR
 
     const [dataSourceConfig, setDataSourceConfig] = useState<any>(null);
     const [variables, setVariables] = useState<any[]>([]);
@@ -79,7 +79,7 @@ export default function Variables() {
         navigate('/usuario/fuente-datos');
     };
 
-    // ✅ AÑADIR FUNCIÓN PARA INICIAR TUTORIAL
+    //   AÑADIR FUNCIÓN PARA INICIAR TUTORIAL
     const handleStartTutorial = () => {
         startTutorial(TutorialVariables);
     };
@@ -353,7 +353,7 @@ export default function Variables() {
                                     : 'Seleccione al menos una variable para continuar'}
                             </span>
                             <button
-                                // ✅ COMBINAR LOS DOS className EN UNO SOLO
+                                //   COMBINAR LOS DOS className EN UNO SOLO
                                 className={`tutorial-next-button px-4 py-2 rounded-lg flex items-center ${selectedVariables.length === 0 || (dataSourceConfig.protocol === 'file' && !rangoFechasSeleccionado)
                                     ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                                     : 'bg-orange-400 text-white hover:bg-orange-500'

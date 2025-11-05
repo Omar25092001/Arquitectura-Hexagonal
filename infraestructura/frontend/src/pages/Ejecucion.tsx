@@ -17,7 +17,7 @@ import {
     leerArchivoExcelConRango
 } from '../utils/ExtraerDatos';
 import ModalDetalleRegistro from '@/components/Ejecucion/ModalDetalleRegistro';
-
+import { guardarSesionXmi } from '@/services/xmi.service';
 
 export default function Ejecucion() {
     const navigate = useNavigate();
@@ -54,6 +54,25 @@ export default function Ejecucion() {
         { id: 3, title: 'Ejecución', active: true }
     ];
 
+    const generarYGuardarXmi = async () => {
+        if (liveData.length === 0 || !userId) {
+            console.log("No hay datos o usuario para guardar en XMI.");
+            return;
+        }
+        try {
+            console.log("Guardando sesión XMI...");
+            const datosOrdenados = [...liveData].reverse();
+            console.log("Datos ordenados para XMI:", datosOrdenados);
+            await guardarSesionXmi(
+                userId,
+                datosOrdenados
+            );
+            console.log("Sesión XMI guardada exitosamente.");
+        } catch (error) {
+            console.error("Error al guardar la sesión XMI:", error);
+        }
+    };
+
     useEffect(() => {
         const loadConfigurations = () => {
             const dataSource = localStorage.getItem('dataSourceConfig');
@@ -67,6 +86,15 @@ export default function Ejecucion() {
 
         loadConfigurations();
     }, []);
+
+    useEffect(() => {
+        return () => {
+            // Solo guardar si la simulación estaba corriendo y hay datos
+            if (liveData.length > 0 && isRunning) {
+                generarYGuardarXmi();
+            }
+        };
+    }, [userId, isRunning]);
 
     useEffect(() => {
         const primeraVez = localStorage.getItem('tutorialPrimeraVez');
@@ -154,33 +182,27 @@ export default function Ejecucion() {
     const handlePauseSimulation = () => {
         setIsRunning(false);
         setConnectionStatus('disconnected');
-        if (mqttClient) {
-            mqttClient.end();
-            setMqttClient(null);
-        }
-        if (wsClient) {
-            wsClient.close();
-            setWsClient(null);
-        }
-        if (httpInterval) {
-            clearInterval(httpInterval);
-            setHttpInterval(null);
-        }
+        if (mqttClient) mqttClient.end();
+        if (wsClient) wsClient.close();
+        if (httpInterval) clearInterval(httpInterval);
     };
 
     const handleNewSimulation = () => {
-        handlePauseSimulation();
+        generarYGuardarXmi(); // Llamar ANTES de limpiar
+        handlePauseSimulation(); // Esto detiene la conexión
         setLiveData([]);
         setConnectionError('');
     };
 
     const handleReconfigure = () => {
+        generarYGuardarXmi(); // Llamar ANTES de navegar
         handlePauseSimulation();
         setLiveData([]);
         navigate('/usuario/fuente-datos');
     };
 
     const handleGoBack = () => {
+        generarYGuardarXmi(); // Llamar ANTES de navegar
         handlePauseSimulation();
         navigate('/usuario/variables');
     };
@@ -190,6 +212,8 @@ export default function Ejecucion() {
         setShowDataModal(true);
         endTutorial();
     }
+
+
 
     const handleSeleccionarRango = async (direccion: 'arriba' | 'abajo' | 'actual') => {
         if (!selectedData || !selectedAlgorithm) {
@@ -449,7 +473,7 @@ export default function Ejecucion() {
                             {/* ⬇️ Agrega aquí el botón de tutorial de monitorización */}
                             {modoMonitorizacion && (
                                 <button
-                                    onClick={() => startTutorial(   TutorialMonitorizacion)}
+                                    onClick={() => startTutorial(TutorialMonitorizacion)}
                                     className="ml-3 p-1 text-orange-400 hover:text-orange-300 rounded-full transition-colors"
                                     title="Ver tutorial de monitorización"
                                 >

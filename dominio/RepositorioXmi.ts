@@ -14,4 +14,7 @@ export interface RepositorioXmi {
      * Necesita ambos IDs para construir la ruta 'usuarioId/sesionId.xmi'.
      */
     buscarPorId(id: SesionXmiId, usuarioId: UsuarioId): Promise<SesionXMI | null>;
+
+    guardarArchivo(sesion: SesionXMI, nombreArchivo: string, liveData: any[]): Promise<void>;
+
 }

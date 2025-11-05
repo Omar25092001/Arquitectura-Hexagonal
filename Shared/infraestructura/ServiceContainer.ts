@@ -17,7 +17,7 @@ import { ObtenerEjecuciones } from "../../aplicacion/CasosUsoEjecucionAlgoritmo/
 
 //XMI
 import { CrearSesionXmi } from "../../aplicacion/CasosUsoXmi/CrearSesionXmi";
-
+import { GuardarSesionXmi } from "../../aplicacion/CasosUsoXmi/GuardarSesionXmi";
 //Repositorios
 import { RepositorioEjecucionAlgoritmoPrismaPostgre } from "../../infraestructura/backend/adaptadores/RepositorioEjecucionAlgoritmoPrismaPostgre"
 import { RepositorioUsuarioPrismaPostgre } from "../../infraestructura/backend/adaptadores/RepositorioUsuarioPrismaPostgre"
@@ -51,6 +51,7 @@ export const ServiceContainer = {
     obtenerEjecuciones: new ObtenerEjecuciones(ejecucionRepositorio)
   },
   xmi: {
-    crearSesionXmi: new CrearSesionXmi(xmiRepositorio)
+    crearSesionXmi: new CrearSesionXmi(xmiRepositorio),
+    guardarSesionXmi: new GuardarSesionXmi(xmiRepositorio)
   }
 }

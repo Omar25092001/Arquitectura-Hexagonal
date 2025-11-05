@@ -20,7 +20,7 @@ export class EjecutorModeloPython {
                 script: path.join(this.directorioBase, 'Prediccion', 'predictor.py'),
                 sufijo: '_predictivo.pkl'
             }
-            // ✅ Eliminamos optimización y clasificación ya que no tienen modelos
+            //   Eliminamos optimización y clasificación ya que no tienen modelos
         ];
 
         for (const config of tiposModelos) {
@@ -38,7 +38,7 @@ export class EjecutorModeloPython {
             }
         }
 
-        // ✅ Si no encontramos modelo predictivo, verificar si piden optimización o clasificación
+        // Si no encontramos modelo predictivo, verificar si piden optimización o clasificación
         const scriptOptimizacion = path.join(this.directorioBase, 'Optimizacion', 'optimizador.py');
         const scriptClasificacion = path.join(this.directorioBase, 'Clasificacion', 'clasificador.py');
 

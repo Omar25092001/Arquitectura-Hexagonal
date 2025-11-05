@@ -118,7 +118,7 @@ if __name__ == "__main__":
         tiempo_fin = time.time()
         tiempo_ejecucion = round(tiempo_fin - tiempo_inicio, 4)  # 4 decimales
         
-        # ✅ Resultado exitoso CON TIEMPO REAL
+        #   Resultado exitoso CON TIEMPO REAL
         resultado = {
             "success": True,
             "tipo": "predictivo",

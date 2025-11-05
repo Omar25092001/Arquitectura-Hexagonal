@@ -231,7 +231,6 @@ export default function ModalDetalleRegistro({
 
     // Función para obtener valores seguros para el algoritmo
     const obtenerValoresParaAlgoritmo = (): number[] => {
-        // ✅ No simular valores - usar solo datos reales
         const datosColumna = selectedData?._datosColumna as number[];
         const indiceFila = selectedData?._indiceFila as number;
 
@@ -263,7 +262,6 @@ export default function ModalDetalleRegistro({
     };
 
     // Función principal para ejecutar algoritmo
-    // Función principal para ejecutar algoritmo
     const ejecutarAlgoritmoSeleccionado = async () => {
         if (!selectedAlgorithm) {
             setErrorEjecucion('Selecciona un algoritmo');
@@ -293,7 +291,7 @@ export default function ModalDetalleRegistro({
             const tipo = detectarTipoAlgoritmo(algoritmoSeleccionado);
             const nombreLimpio = obtenerNombreLimpio(algoritmoSeleccionado);
 
-            // ✅ Intentar obtener valores reales - puede lanzar error
+            // Intentar obtener valores reales - puede lanzar error
             let valoresParaAlgoritmo: number[];
             try {
                 valoresParaAlgoritmo = obtenerValoresParaAlgoritmo();
@@ -324,17 +322,17 @@ export default function ModalDetalleRegistro({
                     break;
             }
 
-            // ✅ EJECUTAR ALGORITMO
+            // EJECUTAR ALGORITMO
             const resultado = await ejecutarAlgoritmo(payload);
 
-            // ✅ SI LA RESPUESTA ES EXITOSA, GUARDAR Y MOSTRAR RESULTADO
+            // SI LA RESPUESTA ES EXITOSA, GUARDAR Y MOSTRAR RESULTADO
             if (resultado.success) {
                 const resultadoData = resultado.data;
 
                 // Mostrar resultado primero
                 setResultadoAlgoritmo(resultadoData);
 
-                // ✅ GUARDAR EJECUCIÓN AUTOMÁTICAMENTE EN SEGUNDO PLANO
+                // GUARDAR EJECUCIÓN AUTOMÁTICAMENTE EN SEGUNDO PLANO
                 try {
                     const resultadosNumericos = extraerResultadosNumericos(resultadoData);
 
@@ -352,11 +350,11 @@ export default function ModalDetalleRegistro({
 
                     // Guardar en BD
                     await crearEjecucion(datosParaGuardar);
-                    console.log('✅ Ejecución guardada automáticamente:', datosParaGuardar.id);
+                    console.log(' Ejecución guardada automáticamente:', datosParaGuardar.id);
 
                 } catch (errorGuardado: any) {
-                    // ⚠️ Si falla el guardado, solo loguear (no afecta al usuario)
-                    console.error('⚠️ Error al guardar ejecución (resultado mostrado correctamente):', errorGuardado);
+                    // Si falla el guardado, solo loguear (no afecta al usuario)
+                    console.error(' Error al guardar ejecución (resultado mostrado correctamente):', errorGuardado);
                 }
 
             } else {

@@ -3,3 +3,5 @@
 /infraestructura/backend/package.json
 /infraestructura/frontend/node_modules
 /infraestructura/frontend/package-lock.json
+/infraestructura/backend/xmi/*
+/infraestructura/backend/xmi/.gitkeep

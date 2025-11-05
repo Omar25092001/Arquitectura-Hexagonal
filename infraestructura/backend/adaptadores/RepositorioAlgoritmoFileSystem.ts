@@ -18,7 +18,7 @@ export class RepositorioAlgoritmoFileSystem implements RepositorioAlgoritmo {
     async obtenerAlgoritmosPorUsuario(usuarioId: string): Promise<Algoritmo[]> {
         const algoritmos: Algoritmo[] = [];
         
-        // ✅ Carpetas donde buscar modelos
+        //   Carpetas donde buscar modelos
         const carpetasModelos = [
             { 
                 tipo: 'Predictivo', 
@@ -39,7 +39,7 @@ export class RepositorioAlgoritmoFileSystem implements RepositorioAlgoritmo {
 
         console.log(`Buscando algoritmos para usuario: ${usuarioId}`);
 
-        // ✅ Buscar en cada carpeta
+        //   Buscar en cada carpeta
         for (const { tipo, carpeta, sufijo } of carpetasModelos) {
             console.log(`Explorando carpeta ${tipo}: ${carpeta}`);
             
@@ -51,7 +51,7 @@ export class RepositorioAlgoritmoFileSystem implements RepositorioAlgoritmo {
                     const algoritmosEnCarpeta = archivos
                         .filter(archivo => archivo.startsWith(`${usuarioId}_`) && archivo.endsWith(sufijo))
                         .map(archivo => {
-                            // ✅ Extraer nombre limpio
+                            //   Extraer nombre limpio
                             let nombreAlgoritmo = archivo.replace(`${usuarioId}_`, '').replace('.pkl', '');
                             
                             // Remover sufijos específicos

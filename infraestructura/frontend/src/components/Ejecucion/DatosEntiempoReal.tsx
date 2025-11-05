@@ -29,16 +29,16 @@ export default function DatosEnTiempoReal({
     onSelectData
 }: DatosEnTiempoRealProps) {
 
-    // ✅ Estado para la columna seleccionada
+    //   Estado para la columna seleccionada
     const [columnaSeleccionada, setColumnaSeleccionada] = useState<string>('');
 
-    // ✅ Obtener todas las columnas disponibles (excluyendo timestamp)
+    //   Obtener todas las columnas disponibles (excluyendo timestamp)
     const obtenerColumnasDisponibles = (): string[] => {
         if (liveData.length === 0) return [];
         return Object.keys(liveData[0]).filter(key => key !== 'timestamp');
     };
 
-    // ✅ Función para obtener datos de la columna seleccionada
+    //   Función para obtener datos de la columna seleccionada
     const obtenerDatosColumna = (nombreColumna: string): number[] => {
         if (liveData.length === 0 || !nombreColumna) return [];
         
@@ -48,13 +48,13 @@ export default function DatosEnTiempoReal({
         });
     };
 
-    // ✅ Auto-seleccionar primera columna al cargar datos
+    //   Auto-seleccionar primera columna al cargar datos
     const columnasDisponibles = obtenerColumnasDisponibles();
     if (columnasDisponibles.length > 0 && !columnaSeleccionada) {
         setColumnaSeleccionada(columnasDisponibles[0]);
     }
 
-    // ✅ Función mejorada para manejar la selección de datos
+    //   Función mejorada para manejar la selección de datos
     const handleSelectData = (data: DataPoint, index: number) => {
         const columnaActual = columnaSeleccionada || columnasDisponibles[0];
         const datosColumna = obtenerDatosColumna(columnaActual);
@@ -94,7 +94,7 @@ export default function DatosEnTiempoReal({
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        {/* ✅ Selector de columna para algoritmos */}
+                        {/*   Selector de columna para algoritmos */}
                         <div className="algoritmo-variable-select bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
                             <h4 className="text-blue-300 font-medium mb-3">Seleccionar Variable para Algoritmos</h4>
                             <div className="space-y-3">

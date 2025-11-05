@@ -6,7 +6,7 @@ import { SesionXmiId } from '../../../dominio/xmi/objetosValor/SesionXmiId';
 import { UsuarioId } from '../../../dominio/usuario/objetosValor/UsuarioId';
 import { RutaArchivo } from '../../../dominio/xmi/objetosValor/RutaArchivo';
 import { CreatedAt } from '../../../dominio/xmi/objetosValor/CreatedAt';
-
+import { generarXmi } from '../servicios/generarXmi'; // Función para generar contenido XMI
 export class RepositorioXmiFileSystem implements RepositorioXmi {
 
     private readonly PROYECTO_ROOT = process.cwd();
@@ -29,16 +29,16 @@ export class RepositorioXmiFileSystem implements RepositorioXmi {
         }
     }
 
-    
+
 
     /**
      * Crea la estructura de carpetas anidada para la sesión.
      */
     async crear(sesion: SesionXMI): Promise<void> {
-        
+
         // Asumimos que rutaArchivo.value es "ID_USUARIO/ID_SESION"
         const rutaRelativa = sesion.rutaArchivo.value;
-        
+
         // Esto será "C:\...\proyecto\xmi\ID_USUARIO\ID_SESION"
         const rutaDestinoAbsoluta = path.join(this.RUTA_BASE_XMI, rutaRelativa);
 
@@ -55,7 +55,7 @@ export class RepositorioXmiFileSystem implements RepositorioXmi {
 
         } catch (error) { // 'error' es 'unknown'
             console.error("[RepositorioXmiFileSystem] Error al crear directorio:", error);
-            
+
             if (error instanceof Error) {
                 throw new Error(`Error de sistema de archivos al crear: ${error.message}`);
             }
@@ -67,7 +67,7 @@ export class RepositorioXmiFileSystem implements RepositorioXmi {
      * Busca si un directorio de sesión ya existe.
      */
     async buscarPorId(id: SesionXmiId, usuarioId: UsuarioId): Promise<SesionXMI | null> {
-        
+
         // --- ¡CAMBIO CLAVE! ---
         // Ya no buscamos un archivo ".xmi", buscamos la carpeta de sesión.
         // rutaString será "ID_USUARIO/ID_SESION"
@@ -77,28 +77,55 @@ export class RepositorioXmiFileSystem implements RepositorioXmi {
         try {
             // Esto comprueba si la RUTA (carpeta) existe
             const stats = await fs.stat(rutaAbsoluta);
-            
+
             // Verificamos que sea un directorio
             if (!stats.isDirectory()) {
-                 console.warn(`[RepositorioXmiFileSystem] Se encontró una ruta pero no es un directorio: ${rutaAbsoluta}`);
-                 return null;
+                console.warn(`[RepositorioXmiFileSystem] Se encontró una ruta pero no es un directorio: ${rutaAbsoluta}`);
+                return null;
             }
-            
+
             return new SesionXMI(
                 id,
                 usuarioId,
                 new RutaArchivo(rutaString), // Guardamos la ruta relativa "ID_USUARIO/ID_SESION"
-                new CreatedAt(stats.birthtime) 
+                new CreatedAt(stats.birthtime)
             );
 
         } catch (error) { // 'error' es 'unknown'
-            
+
             if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') {
                 return null; // El directorio no existe
             }
-            
+
             console.error("[RepositorioXmiFileSystem] Error al buscar directorio:", error);
-            throw error; 
+            throw error;
+        }
+    }
+
+
+    async guardarArchivo(sesion: SesionXMI, nombreArchivo: string, liveData: any[]): Promise<void> {
+
+        // 2. Generar el contenido XMI (Lógica de Infraestructura)
+        // (Esto convierte el any[] en un string)
+        const contenidoXmi = generarXmi(liveData);
+
+        // 3. Definir rutas (Lógica de Infraestructura)
+        // Usa 'sesion.rutaArchivo.value' (ej: 'ID_USUARIO/ID_SESION')
+        const rutaDirectorioSesion = path.join(this.RUTA_BASE_XMI, sesion.rutaArchivo.value);
+        const rutaArchivoCompleta = path.join(rutaDirectorioSesion, nombreArchivo);
+
+        try {
+            // 4. Asegurar carpeta y escribir archivo
+            await fs.mkdir(rutaDirectorioSesion, { recursive: true });
+
+            // 5. Escribir el 'contenidoXmi' (string) en el archivo
+            await fs.writeFile(rutaArchivoCompleta, contenidoXmi, 'utf-8');
+
+            console.log(`[RepositorioXmiFileSystem] Archivo XMI guardado: ${rutaArchivoCompleta}`);
+
+        } catch (error) {
+            console.error("[RepositorioXmiFileSystem] Error al guardar archivo XMI:", error);
+            // ... (manejo de error)
         }
     }
 }

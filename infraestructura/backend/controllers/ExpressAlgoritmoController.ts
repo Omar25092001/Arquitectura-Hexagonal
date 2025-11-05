@@ -18,7 +18,7 @@ export class ExpressAlgoritmoController {
         }
     };
 
-    // ✅ Método actualizado con todos los parámetros
+    //   Método actualizado con todos los parámetros
     ejecutar = async (req: any, res: any) => {
         try {
             const { usuarioId, nombreModelo, valores, nPasos } = req.body;
@@ -45,7 +45,7 @@ export class ExpressAlgoritmoController {
                 });
             }
             
-            // ✅ Pasar todos los parámetros requeridos
+            //   Pasar todos los parámetros requeridos
             const resultado = await ServiceContainer.algoritmo.ejecutarAlgoritmo.run(
                 usuarioId,     // 1er parámetro
                 nombreModelo,  // 2do parámetro  

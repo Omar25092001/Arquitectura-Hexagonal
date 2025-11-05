@@ -12,7 +12,7 @@ export class EjecutarAlgoritmo {
                 throw new Error('Se requieren al menos 5 valores para hacer predicciones');
             }
 
-            // ✅ Usar el ejecutor que detecta automáticamente el tipo
+            //   Usar el ejecutor que detecta automáticamente el tipo
             const resultado = await this.ejecutorML.ejecutar(usuarioId, nombreModelo, valores, { nPasos });
             
             return resultado;

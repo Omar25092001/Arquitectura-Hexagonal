@@ -38,7 +38,7 @@ export default function TutorialOverlay() {
         window.addEventListener('resize', handleUpdate);
         window.addEventListener('scroll', handleUpdate, true);
 
-        // ✅ Actualizar cuando el DOM cambia
+        //   Actualizar cuando el DOM cambia
         let observer: MutationObserver | null = null;
         if (targetElement) {
             observer = new MutationObserver(() => {

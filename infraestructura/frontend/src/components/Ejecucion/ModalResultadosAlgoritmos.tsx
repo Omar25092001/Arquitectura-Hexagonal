@@ -4,7 +4,7 @@ interface ResultadoAlgoritmo {
 }
 
 interface ContenedorResultadosProps {
-    resultado: ResultadoAlgoritmo | null; // ✅ Permitir null
+    resultado: ResultadoAlgoritmo | null; //   Permitir null
     onCerrar?: () => void;
 }
 

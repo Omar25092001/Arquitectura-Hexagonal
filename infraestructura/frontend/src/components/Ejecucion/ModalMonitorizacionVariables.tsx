@@ -365,7 +365,7 @@ export default function ModalMonitorizacion({
                             const nuevoModo = !modoSimulacion;
                             setModoSimulacion(nuevoModo);
 
-                            // ✅ Si vamos a simulación, mantener valores. Si vamos a monitorización, limpiar
+                            //   Si vamos a simulación, mantener valores. Si vamos a monitorización, limpiar
                             if (!nuevoModo) {
                                 // Volviendo a monitorización - limpiar valores simulados
                                 setValoresSimulados({});
