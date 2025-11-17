@@ -89,10 +89,10 @@ export function conectarWebSocket(
             try {
                 const jsonData: any = JSON.parse(mensajeRecibido);
                 if (jsonData.type && ['pong', 'auth_success', 'ping', 'keepalive'].includes(jsonData.type)) return;
-            } catch {}
+            } catch { }
             parsedData = parsearMensaje(mensajeRecibido);
             if (Object.keys(parsedData).filter((k: any) => k !== 'timestamp').length === 0) return;
-            setLiveData((prev: any) => [parsedData, ...prev]);setLiveData((prev: any) => [parsedData, ...prev]);
+            setLiveData((prev: any) => [parsedData, ...prev]); setLiveData((prev: any) => [parsedData, ...prev]);
         };
 
         ws.onerror = () => {
@@ -121,7 +121,7 @@ export function conectarHTTP(
     setLiveData: any,
     setConnectionStatus: any,
     setConnectionError: any,
-    setHttpInterval:any,
+    setHttpInterval: any,
     intervaloMinutos: number
 ) {
     if (!config) return;
@@ -160,7 +160,7 @@ export function conectarInfluxDB(
     setConnectionStatus: any,
     setConnectionError: any,
     setHttpInterval: any,
-    intervaloMinutos:any
+    intervaloMinutos: any
 ) {
     if (!config) {
         setConnectionError('No hay configuración de InfluxDB disponible');
@@ -250,38 +250,48 @@ export function conectarInfluxDB(
 }
 
 // Agregar al final de ExtraerDatos.ts:
+// Agregar al final de ExtraerDatos.ts:
 export function leerArchivoExcelConRango(
+    datosDelRango: any,    // <-- Este es el OBJETO que viene del Context
     variablesConfig: any,
     setLiveData: any,
     setConnectionStatus: any,
     setConnectionError: any,
     setHttpInterval: any,
-    intervaloMinutos: number
+    intervaloMinutos: number,
+    startIndex: number,      // <-- 1. Parámetro nuevo: índice de inicio
+    setStartIndex: (index: number) => void
 ) {
-    // Obtener datos del rango seleccionado
-    const dateRangeData = localStorage.getItem('dateRangeData');
-    
-    if (!dateRangeData) {
+    // --- 1. CORRECCIÓN DEL ERROR JSON.parse ---
+    // 'datosDelRango' YA ES el objeto, no un string.
+    // Lo asignamos directamente.
+    const rangeInfo = datosDelRango;
+
+    // ELIMINAMOS ESTAS LÍNEAS QUE CAUSAN EL ERROR
+    // const dateRangeData = datosDelRango;
+    // const rangeInfo = JSON.parse(dateRangeData);
+
+    console.log('Usando datos del rango (desde Context):', rangeInfo);
+
+    // Hacemos el chequeo con rangeInfo
+    if (!rangeInfo || !rangeInfo.filteredData) {
         setConnectionError('No se encontró información del rango de fechas seleccionado');
         setConnectionStatus('error');
         return;
     }
-    
-    const rangeInfo = JSON.parse(dateRangeData);
-    console.log('Usando datos del rango:', rangeInfo);
-    
-    let currentIndex = 0;
-    
+
+    let currentIndex = startIndex;
+
     const simularLecturaSecuencial = () => {
         if (currentIndex < rangeInfo.filteredData.length) {
             const rowData = rangeInfo.filteredData[currentIndex];
-            
+
             // Convertir los datos de la fila al formato esperado
             const parsedData: any = {
-                timestamp: new Date(rowData[rangeInfo.dateColumn] || new Date()).toLocaleTimeString()
+                timestamp: new Date(rowData[rangeInfo.dateColumn] || new Date()).toLocaleString()
             };
-            
-            // Agregar solo las variables seleccionadas
+
+            // Agregar solo las variables seleccionada
             if (variablesConfig?.variables) {
                 variablesConfig.variables.forEach((variable: any) => {
                     if (rowData[variable.name] !== undefined) {
@@ -289,26 +299,29 @@ export function leerArchivoExcelConRango(
                     }
                 });
             }
-            
+
             setLiveData((prev: any) => [parsedData, ...prev]);
-            currentIndex++;
-            
-            console.log(`Procesado registro ${currentIndex}/${rangeInfo.filteredData.length}:`, parsedData);
-            
+            const nextIndex = currentIndex + 1;
+            currentIndex = nextIndex;
+            setStartIndex(nextIndex);
+
+            // console.log(`Procesado registro ${currentIndex}/${rangeInfo.filteredData.length}:`, parsedData); // (Opcional)
+
         } else {
             console.log('Todos los registros del rango han sido procesados');
-            // Reiniciar desde el principio si se desea loop
             currentIndex = 0;
+            setStartIndex(0);;
         }
     };
-    
+
     setConnectionStatus('connected');
     setConnectionError('');
-    
+
     // Cargar primer registro
     simularLecturaSecuencial();
-    
-    // Configurar intervalo para simular datos en tiempo real
+
+    // --- 2. CORRECCIÓN DE LA VELOCIDAD DE SIMULACIÓN ---
+
     const interval: any = setInterval(simularLecturaSecuencial, intervaloMinutos * 60 * 1000);
     setHttpInterval(interval);
 }

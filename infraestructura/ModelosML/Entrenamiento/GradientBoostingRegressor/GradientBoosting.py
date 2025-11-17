@@ -55,7 +55,7 @@ def crear_datos_clasificacion(datos):
     return np.array(X), np.array(y)
 
 def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
-    columna_temperatura = "Temperatura interior - °C"
+    columna_temperatura = "Temp1 - °C"
     print("="*60)
     print(" ENTRENAMIENTO DE MODELO")
     print(f" Tipo: {tipo_modelo.upper()}")
@@ -64,6 +64,7 @@ def entrenar_modelo(archivo_excel, id_usuario, nombre_modelo, tipo_modelo):
     try:
         print("\n Cargando datos del Excel...")
         df = pd.read_excel(archivo_excel)
+        df[columna_temperatura] = pd.to_numeric(df[columna_temperatura], errors='coerce')
         temp_data = df[columna_temperatura].dropna().values
         print(f" {len(temp_data)} registros cargados")
     except Exception as e:

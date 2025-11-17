@@ -44,7 +44,6 @@ export default function ModalResultadosAlgoritmos({ resultado, onCerrar }: Conte
                                         <span className="text-blue-400 font-medium">Paso {index + 1}:</span>
                                         <span className="font-bold">{pred.toFixed(2)}°C</span>
                                     </div>
-                                    <div className="text-xs text-gray-400 mt-1">Hora estimada: {horaStr}</div>
                                 </div>
                             );
                         })

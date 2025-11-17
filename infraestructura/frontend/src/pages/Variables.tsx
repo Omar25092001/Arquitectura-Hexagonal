@@ -31,9 +31,9 @@ export default function Variables() {
 
     //Manejo de Excel
     const [showDateRangeModal, setShowDateRangeModal] = useState(false);
-    const { excelFile } = useExcelFileSection();
+    const { excelFile, setDateRangeData } = useExcelFileSection();
     const [rangoFechasSeleccionado, setRangoFechasSeleccionado] = useState(false);
-
+    
     // PASOS DE NAVEGACIÓN
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
@@ -136,7 +136,8 @@ export default function Variables() {
                 const variablesDetectadas = await detectarVariablesExcel(dataSourceConfig.config, excelFile);
                 setVariables(variablesDetectadas);
                 setLastFetchTime(new Date());
-                localStorage.setItem('dateRangeData', JSON.stringify(rangeData));
+                setDateRangeData(rangeData);
+                //localStorage.setItem('dateRangeData', JSON.stringify(rangeData));
                 setRangoFechasSeleccionado(true);
                 setShowDateRangeModal(false);
             }

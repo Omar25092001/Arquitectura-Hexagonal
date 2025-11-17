@@ -6,6 +6,7 @@ import DatosEnTiempoReal, { type DataPoint } from '../components/Ejecucion/Datos
 import { TutorialEjecucion } from '../components/Tutorial/TutorialEJecucion';
 import { TutorialMonitorizacion } from '../components/Tutorial/TutorialMonitorizacion';
 import { useTutorial } from '../components/Tutorial/TutorialContext';
+import { useExcelFileSection } from "@/components/shared/ExcelFileSectionContext";
 import { HelpCircle } from 'lucide-react';
 import { CheckCircle, Play, Pause, RotateCcw, Settings, Activity, Wifi, WifiOff, Database, AlertTriangle, Monitor, Sun, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -47,7 +48,8 @@ export default function Ejecucion() {
 
     const { endTutorial, startTutorial } = useTutorial();
 
-
+    const {dateRangeData } = useExcelFileSection();
+    const [excelIndex, setExcelIndex] = useState<number>(0);
     const steps = [
         { id: 1, title: 'Fuentes de Datos', active: true },
         { id: 2, title: 'Variables', active: true },
@@ -55,6 +57,7 @@ export default function Ejecucion() {
     ];
 
     const generarYGuardarXmi = async () => {
+        console.log("Iniciando generación y guardado de XMI...");
         if (liveData.length === 0 || !userId) {
             console.log("No hay datos o usuario para guardar en XMI.");
             return;
@@ -164,12 +167,15 @@ export default function Ejecucion() {
                     break;
                 case 'file':
                     leerArchivoExcelConRango(
+                        dateRangeData,
                         variablesConfig,
                         setLiveData,
                         setConnectionStatus,
                         setConnectionError,
                         setHttpInterval,
-                        intervaloTiempo
+                        intervaloTiempo,
+                        excelIndex,
+                        setExcelIndex
                     );
                     break;
                 default:
@@ -192,12 +198,14 @@ export default function Ejecucion() {
         handlePauseSimulation(); // Esto detiene la conexión
         setLiveData([]);
         setConnectionError('');
+        setExcelIndex(0);
     };
 
     const handleReconfigure = () => {
         generarYGuardarXmi(); // Llamar ANTES de navegar
         handlePauseSimulation();
         setLiveData([]);
+        setExcelIndex(0);
         navigate('/usuario/fuente-datos');
     };
 
