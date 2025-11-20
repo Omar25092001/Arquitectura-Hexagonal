@@ -1,4 +1,3 @@
-
 services:
   # 1. BACKEND (Node.js + Python)
   backend:
@@ -9,13 +8,14 @@ services:
     env_file:
       - .env
     ports:
-      # Expone el puerto 3000 de tu app
       - "4000:3000"
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
     networks:
       - app-network
-    command: sh -c "npx prisma migrate deploy --schema=./infraestructura/backend/prisma/schema.prisma && npx prisma generate --schema=./infraestructura/backend/prisma/schema.prisma && node dist/infraestructura/backend/main.js"
+    # CAMBIO CLAVE AQUÍ ABAJO: Usamos db push
+    command: sh -c "npx prisma db push --schema=./infraestructura/backend/prisma/schema.prisma --accept-data-loss && node dist/infraestructura/backend/main.js"
     restart: unless-stopped
   # 2. FRONTEND (React + Nginx)
   frontend:
@@ -45,8 +45,12 @@ services:
     networks:
       - app-network
     restart: unless-stopped
-
-
+    # Healthcheck: Comprueba cada 5s si Postgres acepta conexiones
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # 5. ADMIN DE BBDD (Opcional)
   adminer:

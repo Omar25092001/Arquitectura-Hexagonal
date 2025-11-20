@@ -34,8 +34,6 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/infraestructura/backend/prisma ./infraestructura/backend/prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/infraestructura/ModelosML/ ./infraestructura/ModelosML/
-
-# --- ¡¡ESTA ES LA LÍNEA QUE FALTABA!! --- 👇
 # Copia ModelosML TAMBIÉN a /app/dist/infraestructura/ModelosML/
 COPY --from=builder /app/infraestructura/ModelosML/ ./dist/infraestructura/ModelosML/
 

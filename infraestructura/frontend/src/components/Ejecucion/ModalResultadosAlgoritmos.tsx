@@ -25,9 +25,6 @@ export default function ModalResultadosAlgoritmos({ resultado, onCerrar }: Conte
     const renderResultadoPredictivo = () => {
         if (resultado.tipo !== 'predictivo') return null;
         
-        // Calcular hora estimada para cada paso (ejemplo: cada paso = +1 hora)
-        const ahora = new Date();
-        const minutosPorPaso = 60; // Puedes ajustar a 15, 30, etc. según tu lógica
         return (
             <div className="modal-algorithm-results space-y-4">
                 <div className="flex items-center gap-2">
@@ -36,8 +33,6 @@ export default function ModalResultadosAlgoritmos({ resultado, onCerrar }: Conte
                 <div className="grid grid-cols-2 gap-2">
                     {resultado.predicciones && resultado.predicciones.length > 0 ? (
                         resultado.predicciones.map((pred: number, index: number) => {
-                            const horaEstimada = new Date(ahora.getTime() + minutosPorPaso * 60000 * (index + 1));
-                            const horaStr = horaEstimada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                             return (
                                 <div key={index} className="bg-gray-700 p-3 rounded-lg text-white text-sm">
                                     <div className="flex justify-between items-center">
